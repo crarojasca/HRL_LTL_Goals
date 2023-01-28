@@ -87,14 +87,6 @@ wwwwwwwwwwwww
         s[state] = 1
         return s
 
-    # def render(self, show_goal=True):
-    #     current_grid = np.array(self.occupancy)
-    #     current_grid[self.currentcell[0], self.currentcell[1]] = -1
-    #     if show_goal:
-    #         goal_cell = self.tocell[self.goal]
-    #         current_grid[goal_cell[0], goal_cell[1]] = -1
-    #     return current_grid
-
     def render(self, show_goal=True):
         """
         Returns the grid, current position and goal cell.

@@ -1,18 +1,5 @@
 
-import gym
-from fourrooms import Fourrooms
-
-import tkinter
-import matplotlib
-matplotlib.use('TkAgg')
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.animation as animation
-
-
 import numpy as np
-import argparse
 import torch
 from copy import deepcopy
 from argparse import Namespace
@@ -22,37 +9,16 @@ from option_critic import critic_loss as critic_loss_fn
 from option_critic import actor_loss as actor_loss_fn
 
 from experience_replay import ReplayBuffer
-from utils import make_env, to_tensor
+from environment import make_env
+from utils import to_tensor
 from logger import Logger
 
 import time
 
-# plt.ion()
-plt.ion()
+
 def run(args):
+    env, is_atari = make_env(args.env, args.render)
     
-    def update_render():
-    
-        grid, current_pos, goal_pos = env.render()
-        current_pos = list(current_pos)
-        current_pos.reverse()
-        goal_pos = list(goal_pos)
-        goal_pos.reverse()
-
-        # Plot Grid
-        matrice = ax.matshow(grid, vmin=0, vmax=1)
-        # Circle
-        circle = patches.Circle(current_pos, radius=0.25, color='green')
-        ax.add_patch(circle)
-        # Annulus
-        annulus = patches.Annulus(goal_pos, r=0.25, width=0.01, color='red')
-        ax.add_patch(annulus)
-
-    env, is_atari = make_env(args.env)
-    
-    fig, ax = plt.subplots()    
-    plt.show()
-
     option_critic = OptionCriticConv if is_atari else OptionCriticFeatures
     device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 
@@ -151,11 +117,8 @@ def run(args):
             curr_op_len += 1
             obs = next_obs
             
-            ax.clear()
-            update_render()
-            plt.draw()
-            plt.pause(0.1)
-
+            env.render()
+            
             logger.log_data(steps, actor_loss, critic_loss, entropy.item(), epsilon)
 
         logger.log_episode(steps, rewards, option_lengths, ep_steps, epsilon)

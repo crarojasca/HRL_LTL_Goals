@@ -1,10 +1,20 @@
+import torch
 import logging
-import math
+import numpy as np
+
 import gym
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
 
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.animation as animation
+matplotlib.use('TkAgg')
+
+from specs import LDBA, Spec_Controller
+
+plt.ion()
 logger = logging.getLogger(__name__)
 
 class Fourrooms(gym.Env):
@@ -13,7 +23,7 @@ class Fourrooms(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self):
+    def __init__(self, render):
 
         layout = """\
 wwwwwwwwwwwww
@@ -53,6 +63,12 @@ wwwwwwwwwwwww
         self.init_states.remove(self.goal)
         self.ep_steps = 0
 
+        self.render_ = render
+        
+        if self.render_:
+            fig, self.ax = plt.subplots()    
+            plt.show()
+
     def seed(self, seed=None):
         return self._seed(seed)
 
@@ -87,12 +103,33 @@ wwwwwwwwwwwww
         s[state] = 1
         return s
 
-    def render(self, show_goal=True):
+    def render(self, delay=0.001):
         """
-        Returns the grid, current position and goal cell.
+        Renders the grid current state.
         """
-        current_grid = np.array(self.occupancy)
-        return current_grid, self.currentcell, self.tocell[self.goal]
+
+        grid = np.array(self.occupancy)
+        current_pos = self.currentcell
+        goal_pos = self.tocell[self.goal]
+
+        current_pos = list(current_pos)
+        current_pos.reverse()
+        goal_pos = list(goal_pos)
+        goal_pos.reverse()
+
+        # Clear the FIG
+        self.ax.clear()
+        # Plot Grid
+        matrice = self.ax.matshow(grid, vmin=0, vmax=1)
+        # Circle
+        circle = patches.Circle(current_pos, radius=0.25, color='green')
+        self.ax.add_patch(circle)
+        # Annulus
+        annulus = patches.Annulus(goal_pos, r=0.25, width=0.01, color='red')
+        self.ax.add_patch(annulus)
+
+        plt.draw()
+        plt.pause(delay)
 
     def step(self, action):
         """
@@ -121,7 +158,42 @@ wwwwwwwwwwwww
         if not done and self.ep_steps >= 1000:
             done = True ; reward = 0.0
 
+        if self.render_:
+            self.render()
+
         return self.get_state(state), reward, done, None
+
+
+class LTLFourrooms(Fourrooms):
+    def __init__(self, render):
+        Fourrooms.__init__(self, render)
+        self.spec = Spec_Controller(["G (phi -> (X psi))"], save_to="runs/")
+
+    def label(self, actions):
+        decode = {62: "phi", 52: "psi", None: None}
+        labeled_actions = [(decode[a]) if a in decode else ("") for a in actions]
+        return labeled_actions
+
+    def step(self, action):
+
+        # Fourroom State
+        next_room_step, _, _, _  = Fourrooms.step(self, action)
+
+        # Spec State
+        labeled_actions = self.label([action])
+        next_spec_spec, acceptances = self.spec.step(labeled_actions)
+
+        # Prod State
+        next_prod_state = torch.cat([torch.tensor(next_room_step)] + next_spec_spec, 0)
+
+        # Rewards
+        rewards = self.reward(acceptances)
+
+        return next_prod_state, rewards, False, None
+
+    def reward(self, acceptances):
+        rewards = [1 if acc else 0 for acc in acceptances]
+        return rewards
 
 if __name__=="__main__":
     env = Fourrooms()

@@ -34,9 +34,12 @@ class Spec_Controller:
                     self.specs.append(new_spec)
         else:
             self.specs = [Spec(f) for f in formulae]
+            for spec in self.specs:
+                spec.ldba.acc[0][()] = [None]
+
         self.num_specs = len(formulae)
-        self.states, self.acceptances = self.reset()
         self.num_states = [spec.ldba.get_num_states() for spec in self.specs]
+        self.states, self.acceptances = self.reset()
         self.all_states = tuple(product(*[range(s) for s in self.num_states]))
         self.epsilon_act_sizes = [spec.ldba.get_num_eps_actions() for spec in self.specs]
     
@@ -45,7 +48,7 @@ class Spec_Controller:
         self.states = [spec.ldba.reset()[0] for spec in self.specs]
         self.acceptances = [False for _ in self.specs]
 
-        return self.states, self.acceptances
+        return self.featurise(self.states), self.acceptances
 
     def featurise(self, states):
         return [one_hot(tt(states[j]), self.num_states[j]) for j in range(len(self.specs))]

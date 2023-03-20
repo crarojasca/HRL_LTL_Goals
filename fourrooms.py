@@ -23,7 +23,7 @@ class Fourrooms(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, render):
+    def __init__(self, noise, render):
 
         layout = """\
 wwwwwwwwwwwww
@@ -63,6 +63,7 @@ wwwwwwwwwwwww
         self.init_states.remove(self.goal)
         self.ep_steps = 0
 
+        self.noise = noise
         self.render_ = render
         
         if self.render_:
@@ -90,9 +91,9 @@ wwwwwwwwwwwww
         self.ep_steps = 0
         return self.get_state(state)
 
-    def switch_goal(self):
+    def switch_goal(self, goal=None):
         prev_goal = self.goal
-        self.goal = self.rng.choice(self.init_states)
+        self.goal = goal if goal else self.rng.choice(self.init_states)
         self.init_states.append(prev_goal)
         self.init_states.remove(self.goal)
         assert prev_goal in self.init_states
@@ -145,7 +146,7 @@ wwwwwwwwwwwww
 
         nextcell = tuple(self.currentcell + self.directions[action])
         if not self.occupancy[nextcell]:
-            if self.rng.uniform() < 1/3.:
+            if self.rng.uniform() < self.noise:
                 empty_cells = self.empty_around(self.currentcell)
                 self.currentcell = empty_cells[self.rng.randint(len(empty_cells))]
             else:
@@ -165,19 +166,74 @@ wwwwwwwwwwwww
 
 
 class LTLFourrooms(Fourrooms):
-    def __init__(self, render):
-        Fourrooms.__init__(self, render)
+    def __init__(self, noise, render):
+        Fourrooms.__init__(self, noise, render)
         self.spec = Spec_Controller(["G (phi -> (X psi))"], save_to="runs/")
+        self.fourrooms_space_len = np.sum(self.occupancy == 0)
+        self.observation_space = spaces.Box(
+            low=0., high=1., shape=(np.sum(self.occupancy == 0) + sum(self.spec.num_states),))
+        
+        self.init_states = list(self.tocell.keys())
+        self.goal = {}
+        self.switch_goal({16: ("phi", ), 17: ("psi",)})
+        self.rewards = 0
 
+    def reset(self):
+        next_room_step = Fourrooms.reset(self)
+        next_spec_state, _ = self.spec.reset()
+        next_prod_state = torch.cat([torch.tensor(next_room_step)] + next_spec_state, 0)
+        return next_prod_state
+
+    def gen_decode(self):
+
+        cell = self.rng.choice(self.init_states)
+
+        def check_neighbor(x):
+            if x not in self.tocell:
+                return False
+            
+            p1 = self.tocell[cell]
+            p2 = self.tocell[x]
+            
+            if abs(p1[0]-p2[0]) == 0 and abs(p1[1]-p2[1]) == 1:
+                return True
+            elif abs(p1[1]-p2[1]) == 0 and abs(p1[0]-p2[0]) == 1:
+                return True
+            
+            return False
+        
+        neighbor = self.rng.choice(list(filter(check_neighbor, self.init_states))) 
+
+        return {cell: ("phi", ), neighbor: ("psi",)}
+
+    def switch_goal(self, goal=None):
+
+        prev_goal = self.goal
+        self.goal = goal if goal else self.gen_decode()
+
+        for cell in prev_goal: self.init_states.append(cell)
+        for cell in self.goal: self.init_states.remove(cell)
+
+        self.init_states.sort()
+
+        for cell in prev_goal: assert cell in self.init_states
+        for cell in self.goal: assert cell not in self.init_states
+        
+        
     def label(self, actions):
-        decode = {62: "phi", 52: "psi", None: None}
-        labeled_actions = [(decode[a]) if a in decode else ("") for a in actions]
+        state = self.tostate[self.currentcell]
+        labeled_actions = [(self.goal[state]) if state in self.goal else ("") for _ in actions]
         return labeled_actions
+
+    def get_state(self, state):
+        s = np.zeros(self.fourrooms_space_len)
+        s[state] = 1
+        return s
 
     def step(self, action):
 
         # Fourroom State
-        next_room_step, _, _, _  = Fourrooms.step(self, action)
+        next_room_step, _, done, _  = Fourrooms.step(self, action)
 
         # Spec State
         labeled_actions = self.label([action])
@@ -185,15 +241,58 @@ class LTLFourrooms(Fourrooms):
 
         # Prod State
         next_prod_state = torch.cat([torch.tensor(next_room_step)] + next_spec_spec, 0)
-
         # Rewards
-        rewards = self.reward(acceptances)
+        reward = sum(self.reward(acceptances))
 
-        return next_prod_state, rewards, False, None
+        if not done and self.spec.specs[0].ldba.state==2:
+            done = True ; reward = 0.0
+
+        # if labeled_actions[0] != (""): 
+        #     print(
+        #     f"""
+        #     Labels: {labeled_actions}
+        #     Rewards: {reward}
+        #     Action: {action}
+        #     State: {self.spec.specs[0].ldba.state}
+        #     Acceptances: {acceptances}
+
+        #     """)
+
+        return next_prod_state, reward, done, None
 
     def reward(self, acceptances):
-        rewards = [1 if acc else 0 for acc in acceptances]
-        return rewards
+        self.rewards = [1 if acc else 0 for acc in acceptances]
+        return self.rewards
+
+    def render(self, delay=0.001):
+        """
+        Renders the grid current state.
+        """
+
+        grid = np.array(self.occupancy)
+        current_pos = list(self.currentcell)
+        goal_pos = [list(self.tocell[key]) for key in self.goal]
+
+        current_pos.reverse()
+        for pos in goal_pos:
+            pos.reverse()
+
+        # Clear the FIG
+        self.ax.clear()
+        # Plot Grid
+        matrice = self.ax.matshow(grid, vmin=0, vmax=1)
+        # Circle
+        circle = patches.Circle(current_pos, radius=0.25, color='green')
+        self.ax.add_patch(circle)
+        # Annulus
+        for pos in goal_pos:
+            annulus = patches.Annulus(pos, r=0.25, width=0.01, color='red')
+            self.ax.add_patch(annulus)
+
+        self.ax.text(-2, -2, self.rewards, fontsize=12)
+    
+        plt.draw()
+        plt.pause(delay)
 
 if __name__=="__main__":
     env = Fourrooms()

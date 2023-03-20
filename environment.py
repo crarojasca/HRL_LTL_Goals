@@ -3,12 +3,12 @@ from fourrooms import Fourrooms, LTLFourrooms
 from gym.wrappers import AtariPreprocessing, TransformReward
 from gym.wrappers import FrameStack as FrameStack_
 
-def make_env(env_name, render):
+def make_env(env_name, render, noise=1/3.):
 
     if env_name == 'fourrooms':
-        return Fourrooms(render), False
+        return Fourrooms(noise, render), False
     elif env_name == 'ltl_fourrooms':
-        return LTLFourrooms(render), False
+        return LTLFourrooms(noise, render), False
 
     env = gym.make(env_name)
     is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

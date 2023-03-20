@@ -46,7 +46,8 @@ def run(args):
     buffer = ReplayBuffer(capacity=args.max_history, seed=args.seed)
     logger = Logger(
         logdir=args.logdir, 
-        run_name=f"{OptionCriticFeatures.__name__}-{args.env}-{args.exp}-{time.ctime()}")
+        # run_name=f"{OptionCriticFeatures.__name__}-{args.env}-{args.exp}-{time.ctime()}")
+        run_name=f"{args.name}-{args.env}-{args.num_options}_opts")
 
     steps = 0
     if args.switch_goal: print(f"Current goal {env.goal}")
@@ -65,14 +66,16 @@ def run(args):
         if args.switch_goal and logger.n_eps == 1000:
             torch.save({'model_params': option_critic.state_dict(),
                         'goal_state': env.goal},
-                        f'models/option_critic_seed={args.seed}_1k')
+                        f'models/{args.name}_{args.num_options}_{args.seed}_1k')
             env.switch_goal()
+            option_critic_prime.freeze()
+            option_critic.freeze()
             print(f"New goal {env.goal}")
 
         if args.switch_goal and logger.n_eps > 2000:
             torch.save({'model_params': option_critic.state_dict(),
                         'goal_state': env.goal},
-                        f'models/option_critic_seed={args.seed}_2k')
+                        f'models/{args.name}_{args.num_options}_{args.seed}_2k')
             break
 
         done = False ; ep_steps = 0 ; option_termination = True ; curr_op_len = 0
@@ -116,18 +119,23 @@ def run(args):
             ep_steps += 1
             curr_op_len += 1
             obs = next_obs
-            
-            env.render()
-            
+                        
             logger.log_data(steps, actor_loss, critic_loss, entropy.item(), epsilon)
 
         logger.log_episode(steps, rewards, option_lengths, ep_steps, epsilon)
 
-args = Namespace(batch_size=32, cuda=True, entropy_reg=0.01, env='fourrooms', 
+# args = Namespace(batch_size=32, cuda=True, entropy_reg=0.01, env='ltl_fourrooms', 
+#                  epsilon_decay=20000, epsilon_min=0.1, epsilon_start=1.0, exp=None, 
+#                  frame_skip=4, freeze_interval=200, gamma=0.99, learning_rate=0.0005, 
+#                  logdir='runs', max_history=10000, max_steps_ep=18000, max_steps_total=4000000, 
+#                  num_options=2, optimal_eps=0.05, seed=0, switch_goal=True, temp=1, 
+#                  termination_reg=0.01, update_frequency=4, render=True)
+
+args = Namespace(batch_size=32, cuda=True, entropy_reg=0.01, env='ltl_fourrooms', 
                  epsilon_decay=20000, epsilon_min=0.1, epsilon_start=1.0, exp=None, 
                  frame_skip=4, freeze_interval=200, gamma=0.99, learning_rate=0.0005, 
                  logdir='runs', max_history=10000, max_steps_ep=18000, max_steps_total=4000000, 
                  num_options=2, optimal_eps=0.05, seed=0, switch_goal=True, temp=1, 
-                 termination_reg=0.01, update_frequency=4, render=True)
+                 termination_reg=0.01, update_frequency=4, render=True, name="G (phi -> (X psi))")
 
-run(args)
+# run(args) 

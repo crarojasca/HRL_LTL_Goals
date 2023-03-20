@@ -92,6 +92,10 @@ class OptionCriticConv(nn.Module):
     def greedy_option(self, state):
         Q = self.get_Q(state)
         return Q.argmax(dim=-1).item()
+    
+    def freeze(self):
+        self.options_W.requires_grad = False
+        self.options_b.requires_grad = False
 
     @property
     def epsilon(self):
@@ -117,7 +121,7 @@ class OptionCriticFeatures(nn.Module):
                 testing=False):
 
         super(OptionCriticFeatures, self).__init__()
-
+        
         self.in_features = in_features
         self.num_actions = num_actions
         self.num_options = num_options
@@ -180,6 +184,10 @@ class OptionCriticFeatures(nn.Module):
     def greedy_option(self, state):
         Q = self.get_Q(state)
         return Q.argmax(dim=-1).item()
+    
+    def freeze(self):
+        self.options_W.requires_grad = False
+        self.options_b.requires_grad = False
 
     @property
     def epsilon(self):

@@ -14,7 +14,6 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-
 agents = {
     "DQN": DQN,
     "OC": OptionCritic,
@@ -82,7 +81,9 @@ def main(cfg : DictConfig) -> None:
     # Save Model
     # agent.save(cfg, run_name)
 
+    logger.close()
     print("FINISHED RUNNING")
+    
 
 if __name__ == "__main__":
     main()

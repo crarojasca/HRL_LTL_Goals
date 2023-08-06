@@ -204,6 +204,10 @@ class OptionCritic:
 
         self.max_episodes = args.max_episodes
 
+        self.steps = 0
+
+        self.episodes = 0
+
 
     def save(self, conf, name):
         hyperparameters = OmegaConf.to_container(conf, resolve=True)
@@ -283,11 +287,9 @@ class OptionCritic:
 
     def run(self, env):
 
-        steps = 0
-        episodes = 0
         reward_list=[]
 
-        while episodes < self.max_episodes:
+        while self.episodes < self.max_episodes:
 
             ep_reward = 0 ; option_lengths = {opt:[] for opt in range(self.num_options)}
             
@@ -321,7 +323,7 @@ class OptionCritic:
                         reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
                     loss = actor_loss
 
-                    if steps % self.update_frequency == 0:
+                    if self.steps % self.update_frequency == 0:
                         data_batch = self.buffer.sample(self.batch_size)
                         critic_loss = self.critic_loss_fn(
                             self.option_critic, self.option_critic_prime, data_batch, self.args)
@@ -331,7 +333,7 @@ class OptionCritic:
                     loss.backward()
                     self.optim.step()
 
-                    if steps % self.freeze_interval == 0:
+                    if self.steps % self.freeze_interval == 0:
                         self.option_critic_prime.load_state_dict(self.option_critic.state_dict())
 
                 state = self.option_critic.get_state(self.to_tensor(next_obs))
@@ -339,16 +341,16 @@ class OptionCritic:
                     state, current_option)
 
                 # update global steps etc
-                steps += 1
+                self.steps += 1
                 ep_steps += 1
                 curr_op_len += 1
                 obs = next_obs
 
                             
                 self.logger.log_data(
-                    steps, reward, actor_loss, critic_loss, entropy.item(), epsilon, action, probs)
+                    self.steps, reward, actor_loss, critic_loss, entropy.item(), epsilon, action, probs)
 
             reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
-            episodes += 1
-            self.logger.log_episode(steps, ep_steps, episodes, ep_reward, mean_reward, epsilon, option_lengths)
+            self.episodes += 1
+            self.logger.log_episode(self.steps, ep_steps, self.episodes, ep_reward, mean_reward, epsilon, option_lengths)

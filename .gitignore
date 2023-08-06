@@ -1,5 +1,10 @@
 .ipynb_checkpoints/*
-__pycache__/*
-runs/*
-.ipynb_checkpoints/Untitled-checkpoint.ipynb
-models/*
+
+*/wandb/*
+*/outputs/*
+*/runs/*
+*/.ipynb_checkpoints/*
+*/models/*
+*/logs/*
+*__pycache__*
+*/data/*

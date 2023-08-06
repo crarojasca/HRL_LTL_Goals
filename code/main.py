@@ -60,11 +60,22 @@ def main(cfg : DictConfig) -> None:
     agent.run(env)
 
     print("Second Stage")
+    # Update Goal
     env.spec.end_state = 2
+    # Clear Buffer
+    agent.buffer.buffer.clear()
+    # Set New Number of Max Episodes
+    agent.max_episodes = cfg.agent.max_episodes*2
+    # Run
     agent.run(env)
 
     print("Third Stage")
     env.spec.end_state = 3
+    # Clear Buffer
+    agent.buffer.buffer.clear()
+    # Set New Number of Max Episodes
+    agent.max_episodes = cfg.agent.max_episodes*3
+    # Run
     agent.run(env)
 
 

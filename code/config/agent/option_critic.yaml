@@ -21,15 +21,15 @@
 # Fourrooms
 name: OC
 seed : 42
-batch_size: 240 
-gamma: 0.999
+batch_size: 64 
+gamma: 0.99
 epsilon_start: 1.0
 epsilon_min: 0.1
-epsilon_decay: 100000
-num_options: 1
+epsilon_decay: 1000
+num_options: 4
 learning_rate: 1e-4
-max_episodes: 3000
-max_steps_ep: 1000 
+max_episodes: 1500
+max_steps_ep: 2000 
 entropy_reg: 0.01 
 freeze_interval: 400 #10000 
 max_history: 1000000

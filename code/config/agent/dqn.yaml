@@ -1,0 +1,14 @@
+name: DQN
+seed: 42
+batch_size : 64
+gamma : 0.99
+epsilon_start: 1
+epsilon_min: 0.1
+epsilon_decay: 10000
+tau : 0.005
+learning_rate: 1e-4
+max_episodes: 5000
+max_steps_ep: 18000
+max_history: 10000
+freeze_interval: 200
+features_encoding: null

@@ -1,0 +1,12 @@
+experiment: 1
+
+logger:
+  folder_path: runs
+  wandb_project: HRL
+model:
+  path: models
+  load_model: null
+defaults:
+  - env: fourrooms
+  - agent: option_critic
+  - _self_

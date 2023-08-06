@@ -1,0 +1,4 @@
+seed: 42
+name: fourrooms
+noise: 0.3
+render: False

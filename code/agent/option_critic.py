@@ -170,7 +170,10 @@ class OptionCritic:
         self.num_options = args.num_options
 
         option_critic = OptionCriticFeatures
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"\nRunning on {device}.\n")
+        self.device = torch.device(device)
 
         self.option_critic = option_critic(
             in_features=observation_space,
@@ -186,6 +189,9 @@ class OptionCritic:
         
         # Create a prime network for more stable Q values
         self.option_critic_prime = deepcopy(self.option_critic)
+
+        total_params = sum(p.numel() for p in self.option_critic.parameters())
+        print(f"\nNumber of parameters: {total_params}\n")
 
         self.optim = torch.optim.RMSprop(self.option_critic.parameters(), lr=args.learning_rate)
 

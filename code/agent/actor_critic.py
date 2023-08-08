@@ -1,130 +1,98 @@
+import numpy as np
+from .base import ReplayMemory
+
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
 
-import pygame
-
-class ReplayBuffer():
-    def __init__(self, max_size, input_shape):
-        self.mem_size = max_size
-        self.mem_cntr = 0
-        self.state_memory = np.zeros((self.mem_size, *input_shape),
-                                    dtype=np.float32)
-        self.new_state_memory = np.zeros((self.mem_size, *input_shape),
-                                        dtype=np.float32)
-        self.log_probs = np.zeros(self.mem_size, dtype=np.float32)
-        self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
-        self.terminal_memory = np.zeros(self.mem_size, dtype=np.uint8)
-
-    def store_transition(self, state, log_prob, reward, state_, done):
-        index = self.mem_cntr % self.mem_size
-        self.state_memory[index] = state.cpu()
-        self.new_state_memory[index] = state_.cpu()
-        self.log_probs[index] = log_prob
-        self.reward_memory[index] = reward
-        self.terminal_memory[index] = done
-        self.mem_cntr += 1
-
-    def sample_buffer(self, batch_size):
-        max_mem = min(self.mem_cntr, self.mem_size)
-        batch = np.random.choice(max_mem, batch_size, replace=False)
-
-        states = self.state_memory[batch]
-        probs = self.log_probs[batch]
-        rewards = self.reward_memory[batch]
-        states_ = self.new_state_memory[batch]
-        terminal = self.terminal_memory[batch]
-
-        return states, probs, rewards, states_, terminal
 
 class NN(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims,
-                 n_actions):
+    def __init__(self, observation_space, n_actions, features_encoding=None):
         super(NN, self).__init__()
-        self.input_dims = input_dims
-        self.fc1_dims = fc1_dims
-        self.fc2_dims = fc2_dims
-        self.n_actions = n_actions
-        self.fc1 = nn.Linear(*self.input_dims, self.fc1_dims)
-        self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
-        self.pi = nn.Linear(self.fc2_dims, n_actions)
-        self.v = nn.Linear(self.fc2_dims, 1)
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-        self.to(self.device)
+        self.features_encoding = features_encoding
+
+        self.base_layers = nn.Sequential(
+            nn.Linear(observation_space, 32),
+            nn.ReLU(),
+            nn.Linear(32, 64),
+            nn.ReLU()
+        )
+        self.pi = nn.Linear(64, n_actions)
+        self.v = nn.Linear(64, 1)
 
     def forward(self, state):
-        x = F.relu(self.fc1(state))
-        x = F.relu(self.fc2(x))
+        x = self.base_layers(state)
         pi = self.pi(x)
         v = self.v(x)
         return (pi, v)
+    
 
 class ActorCritic():
-    def __init__(self, lr, input_dims, n_actions, gamma=0.99,
-                 l1_size=256, l2_size=256, batch_size=32,
-                 mem_size=1000000, logger=None, args=None):
-        self.gamma = gamma
-        self.batch_size = batch_size
-        self.memory = ReplayBuffer(mem_size, input_dims)
-        self.actor_critic = NN(lr, input_dims, l1_size,
-                                    l2_size, n_actions=n_actions)
-        self.log_probs = []
+    def __init__(self, observation_space, action_space, args=None):
 
-        self.logger = logger
+        self.device = T.device('cuda' if T.cuda.is_available() else 'cpu')
+
+        # Parameters
+        self.gamma = args.gamma
+        self.tau = args.target_network.tau
+        self.batch_size = args.replay_memory.batch_size
         self.max_episodes = args.max_episodes
         self.max_steps_ep = args.max_steps_ep
+        self.log_probs = []
 
-    def store_transition(self, state, prob, reward, state_, done):
-        self.memory.store_transition(state, prob, reward, state_, done)
+        # Replay Memory
+        self.memory = ReplayMemory(
+            args.replay_memory.max_history, 
+            values=('state', 'logp', 'next_state', 'reward', "done"), seed=42)
+        
+        # Networks
+        self.network = NN(observation_space, action_space).to(self.device)
+        self.target_network = NN(observation_space, action_space).to(self.device)
+        self.target_network.load_state_dict(self.network.state_dict())
+        self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate)
 
-    def get_state(self, observation):
-        return T.tensor([observation], dtype=T.float32).to(self.actor_critic.device)
+        self.number_parameters = sum(p.numel() for p in self.network.parameters())        
+
 
     def choose_action(self, state):
-        probabilities, _ = self.actor_critic.forward(state)
-        probabilities = F.softmax(probabilities)
+        probabilities, _ = self.network.forward(state)
+        probabilities = F.softmax(probabilities, dim=-1)
         action_probs = T.distributions.Categorical(probabilities)
         action = action_probs.sample()
-        log_probs = action_probs.log_prob(action)
+        logp = action_probs.log_prob(action).view(1, 1)
+        entropy = action_probs.entropy()
 
-        return action.item(), log_probs
+        return action.item(), logp, entropy
 
-    def learn(self):
-        if self.memory.mem_cntr < self.batch_size:
+    def optimize(self):
+        if len(self.memory) < self.batch_size:
             return None, None
-        
-        self.actor_critic.optimizer.zero_grad()
 
-        state, prob, reward, new_state, done = \
-                                self.memory.sample_buffer(self.batch_size)
+        state, logp, reward, next_state, done = \
+                                self.memory.sample(self.batch_size)
 
-        states = T.tensor(state).to(self.actor_critic.device)
-        probs = T.tensor(prob).to(self.actor_critic.device)
-        rewards = T.tensor(reward).to(self.actor_critic.device)
-        dones = T.tensor(done).to(self.actor_critic.device)
-        states_ = T.tensor(new_state).to(self.actor_critic.device)
+        # Get Critic Values
+        with T.no_grad():
+            _, critic_value_ = self.target_network.forward(next_state)
+        _, critic_value = self.network.forward(state)
 
-        _, critic_value_ = self.actor_critic.forward(states_)
-        _, critic_value = self.actor_critic.forward(states)
+        # Compute delta
+        delta = reward + (1-done)*self.gamma*critic_value_
 
-        critic_value_[dones] = 0.0
-
-        delta = rewards + self.gamma*critic_value_
-
-        actor_loss = -T.mean(probs*(delta-critic_value))
+        actor_loss = -T.mean(logp*(delta-critic_value))
         critic_loss = F.mse_loss(delta, critic_value)
 
-        (actor_loss + critic_loss).backward()
+        loss = actor_loss + critic_loss
 
-        self.actor_critic.optimizer.step()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         return actor_loss, critic_loss
 
-    def run(self, env):
+    def run(self, env, logger=None):
 
         steps = 0
         episodes = 0
@@ -133,35 +101,50 @@ class ActorCritic():
 
         while episodes < self.max_episodes:
 
-            rewards = 0
+            ep_reward = 0
 
-            obs = env.reset()
-
-            state = self.get_state(obs)
+            obs, info = env.reset()
+            state = T.tensor(obs, dtype=T.float32, device=self.device).view(1, -1)
 
             done = False ; ep_steps = 0
                       
             while not done and ep_steps < self.max_steps_ep:
                         
-                action, prob = self.choose_action(state)
+                action, logp, entropy = self.choose_action(state)
 
-                next_obs, reward, done, _ = env.step(action)
+                # Take action in the env
+                next_obs, reward, done, truncated, info = env.step(action)
+                # Set values
+                next_state = T.tensor(next_obs, dtype=T.float32, device=self.device).view(1, -1)
+                reward = T.tensor(reward, device=self.device).view(1, 1)
+                done = T.tensor(done, dtype=T.int8, device=self.device).view(1, 1)
+                # Store transition in buffer
+                self.memory.push(
+                    state, logp, reward, next_state, done)
+                # Update NN parameters
+                actor_loss, critic_loss = self.optimize()
 
-                next_state = self.get_state(next_obs)
-                self.store_transition(state, prob,
-                                    reward, next_state, int(done))
-                actor_loss, critic_loss = self.learn()
+                target_net_state_dict = self.target_network.state_dict()
+                net_state_dict = self.network.state_dict()
+                for key in net_state_dict:
+                    target_net_state_dict[key] = net_state_dict[key]*self.tau \
+                            + target_net_state_dict[key]*(1-self.tau)
+                self.target_network.load_state_dict(target_net_state_dict)
 
-                rewards += reward    
+                # Update counters
+                ep_reward += reward    
                 steps += 1
                 ep_steps += 1
                 obs = next_obs
 
+                if logger:
+                    logger.log_data(
+                        steps, reward, actor_loss, critic_loss, entropy, 0)
                             
-                self.logger.log_data(
-                    steps, rewards, actor_loss, critic_loss, 0, 0, action, prob)
 
-            reward_list += [rewards]
+            reward_list += [ep_reward.cpu().item()]
             mean_reward = np.mean(reward_list[-100:])
             episodes += 1
-            self.logger.log_episode(episodes, rewards, mean_reward, {}, ep_steps, 0)
+
+            if logger:
+                logger.log_episode(steps, ep_steps, episodes, ep_reward.item(), mean_reward, 0)

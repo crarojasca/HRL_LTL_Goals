@@ -30,21 +30,22 @@ class ReplayBuffer(object):
 
 
 
-class OptionCriticFeatures(nn.Module):
+class Network(nn.Module):
     def __init__(self,
                 in_features,
                 num_actions,
                 num_options,
+                features_encoding="mlp",
+                dims=[128, 64, 32],
                 temperature=1.0,
                 eps_start=1.0,
                 eps_min=0.1,
                 eps_decay=int(1e6),
                 eps_test=0.05,
                 device='cpu',
-                features_encoding="mlp",
                 testing=False):
 
-        super(OptionCriticFeatures, self).__init__()
+        super(Network, self).__init__()
         
         self.in_features = in_features
         self.num_actions = num_actions
@@ -65,12 +66,12 @@ class OptionCriticFeatures(nn.Module):
             input_dim = in_features
         elif features_encoding=="mlp":
             self.features = nn.Sequential(
-                nn.Linear(in_features, 512),
+                nn.Linear(in_features, dims[0]),
                 nn.ReLU(),
-                nn.Linear(512, 256),
+                nn.Linear(dims[0], dims[1]),
                 nn.ReLU()
             )
-            input_dim = 256        
+            input_dim = dims[1]        
 
         self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
@@ -79,9 +80,9 @@ class OptionCriticFeatures(nn.Module):
         self.options = torch.nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(input_dim, 128),
+                    nn.Linear(input_dim, dims[-1]),
                     nn.ReLU(),
-                    nn.Linear(64, num_actions)
+                    nn.Linear(dims[-1], num_actions)
                 ) for _ in range(num_options)
             ]
         )
@@ -167,51 +168,46 @@ class OptionCritic:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
 
+        # Parameters
+        self.args = args
         self.num_options = args.num_options
+        self.max_episodes = args.max_episodes
+        self.max_steps_ep = args.max_steps_ep
+        self.update_frequency = args.update_frequency
 
-        option_critic = OptionCriticFeatures
-
+        # Device
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print(f"\nRunning on {device}.\n")
         self.device = torch.device(device)
-
-        self.option_critic = option_critic(
-            in_features=observation_space,
-            num_actions=action_space,
-            num_options=args.num_options,
+        
+        # Main Network
+        self.option_critic = Network(
+            observation_space, action_space, args.num_options,
+            features_encoding=args.network.features_encoding,
+            dims=args.network.dimensions,
             temperature=args.temp,
-            eps_start=args.epsilon_start,
-            eps_min=args.epsilon_min,
-            eps_decay=args.epsilon_decay,
-            eps_test=args.optimal_eps,
+            eps_start=args.epsilon.start,
+            eps_min=args.epsilon.min,
+            eps_decay=args.epsilon.decay,
+            eps_test=args.epsilon.optimal,
             device=self.device
         )
-        
-        # Create a prime network for more stable Q values
-        self.option_critic_prime = deepcopy(self.option_critic)
-
         self.number_parameters = sum(p.numel() for p in self.option_critic.parameters())
-
         self.optim = torch.optim.RMSprop(self.option_critic.parameters(), lr=args.learning_rate)
 
-        self.buffer = ReplayBuffer(capacity=args.max_history, seed=args.seed)
+        # Target Network
+        self.option_critic_prime = deepcopy(self.option_critic)
+        self.tau = args.target_network.tau
+        self.freeze_interval = args.target_network.freeze_interval
+
+        # Replay Memory
+        self.batch_size = args.replay_memory.batch_size
+        self.buffer = ReplayBuffer(
+            capacity=args.replay_memory.max_history, seed=args.seed)      
         
-        self.max_steps_ep = args.max_steps_ep
-
-        self.batch_size = args.batch_size
-
-        self.freeze_interval = args.freeze_interval
-
-        self.args = args
-
-        self.update_frequency = args.update_frequency
-
-        self.max_episodes = args.max_episodes
-
+        # Counters
         self.steps = 0
-
         self.episodes = 0
-
 
     def save(self, conf, name):
         hyperparameters = OmegaConf.to_container(conf, resolve=True)
@@ -255,7 +251,8 @@ class OptionCritic:
 
         # Now we can calculate the update target gt
         gt = rewards + masks * args.gamma * \
-            ((1 - next_options_term_prob) * next_Q_prime[batch_idx, options] + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
+            ((1 - next_options_term_prob) * next_Q_prime[batch_idx, options] \
+             + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
 
         # to update Q we want to use the actual network, not the prime
         # criterion = nn.SmoothL1Loss()
@@ -279,10 +276,12 @@ class OptionCritic:
 
         # Target update gt
         gt = reward + (1 - done) * args.gamma * \
-            ((1 - next_option_term_prob) * next_Q_prime[option] + next_option_term_prob  * next_Q_prime.max(dim=-1)[0])
+            ((1 - next_option_term_prob) * next_Q_prime[option]\
+              + next_option_term_prob  * next_Q_prime.max(dim=-1)[0])
 
         # The termination loss
-        termination_loss = option_term_prob * (Q[option].detach() - Q.max(dim=-1)[0].detach() + args.termination_reg) * (1 - done)
+        termination_loss = option_term_prob * (Q[option].detach() - Q.max(dim=-1)[0].detach() \
+                                                + args.termination_reg) * (1 - done)
         
         # actor-critic policy gradient with entropy regularization
         policy_loss = -logp * (gt.detach() - Q[option]) - args.entropy_reg * entropy
@@ -338,7 +337,14 @@ class OptionCritic:
                     self.optim.step()
 
                     if self.steps % self.freeze_interval == 0:
-                        self.option_critic_prime.load_state_dict(self.option_critic.state_dict())
+                        # Soft update of the target network's weights
+                        # θ′ ← τ θ + (1 −τ )θ′
+                        net_state_dict = self.option_critic.state_dict()
+                        target_net_state_dict = self.option_critic_prime.state_dict()
+                        for key in net_state_dict:
+                            target_net_state_dict[key] = net_state_dict[key]*self.tau + \
+                                target_net_state_dict[key]*(1-self.tau)
+                        self.option_critic_prime.load_state_dict(target_net_state_dict)
 
                 state = self.option_critic.get_state(self.to_tensor(next_obs))
                 option_termination, greedy_option = self.option_critic.predict_option_termination(

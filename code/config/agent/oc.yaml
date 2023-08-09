@@ -1,23 +1,39 @@
 # Sapientino
 name: OC
+
 seed : 42
-batch_size: 64
-gamma: 0.99
-epsilon_start: 0.9
-epsilon_min: 0.1
-epsilon_decay: 200000
-num_options: 8
-learning_rate: 1e-4
-max_episodes: 5000
-max_steps_ep: 18000  
-entropy_reg: 0.001 
-freeze_interval: 200
-max_history: 100000
-optimal_eps: 0.05 
 temp: 1
+gamma: 0.99
+num_options: 8
+update_frequency: 1
+learning_rate: 1e-4
+entropy_reg: 0.001 
 termination_reg: 0.01 
-update_frequency: 4
-features_encoding: mlp
+max_episodes: 5000
+max_steps_ep: 18000 
+
+network:
+  features_encoding: mlp
+  dimensions:
+    - 512
+    - 256
+    - 128
+
+epsilon:
+  start: 0.9
+  min: 0.1
+  decay: 200000
+  optimal: 0.05 
+
+replay_memory:
+  enable: True
+  batch_size: 64
+  max_history: 100000
+
+target_network:
+  enable: True
+  freeze_interval: 1
+  tau : 0.005
 
 # Fourrooms
 # name: OC

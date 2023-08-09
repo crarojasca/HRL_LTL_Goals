@@ -201,13 +201,14 @@ class RewardAutoma(object):
 
 class Sapientino(object):
 
-    def __init__(self, seed=42, rows=5, cols=7, name=None, trainsessionname='test', ncol=7, nvisitpercol=2):
+    def __init__(self, seed=42, rows=5, cols=7, name=None, trainsessionname='test', 
+                 ncol=7, nvisitpercol=2, render=False):
 
         random.seed(seed)
         np.random.seed(seed)
 
         self.isAuto = True
-        self.gui_visible = True
+        self.gui_visible = render
         self.userquit = False
         self.optimalPolicyUser = False  # optimal policy set by user
         self.trainsessionname = trainsessionname

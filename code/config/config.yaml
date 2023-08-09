@@ -6,7 +6,7 @@ hydra:
 experiment: 1
 logger:
   type: wandb
-  folder_path: runs
+  folder_path: logs
   wandb_project: HRL
 model:
   path: models

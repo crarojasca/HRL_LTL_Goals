@@ -12,7 +12,7 @@ import yaml
 class Logger():
     def __init__(self, cfg, run_name) -> None:
         self.cfg = cfg
-        self.log_name = run_name       
+        self.log_name = os.path.join(cfg["logger"]["folder_path"], run_name)     
 
         if not os.path.exists(self.log_name):
             os.makedirs(self.log_name)

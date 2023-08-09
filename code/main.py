@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 
-from logger import WanDBLogger, TensorboardLogger
+from logger import Logger, WanDBLogger, TensorboardLogger
 from env.fourrooms import Fourrooms, LTLFourrooms
 from env.breakout import Breakout, LTLBreakout
 from env.sapientino import Sapientino
@@ -14,6 +14,12 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
+loggers = {
+    "base": Logger,
+    "wandb": WanDBLogger,
+    "tensorboard": TensorboardLogger
+}
+
 agents = {
     "DQN": DQN,
     "OC": OptionCritic,
@@ -24,13 +30,36 @@ agents = {
 envs = {
     "fourrooms": LTLFourrooms,
     "breakout": LTLBreakout,
-    "Sapientino": Sapientino
+    "sapientino": Sapientino
 }
 
-@hydra.main(version_base=None, config_path="config", config_name="config")
-def main(cfg : DictConfig) -> None:
+def fourrroms_experiment(env, agent, logger, cfg):
+    # Train
+    print("First Stage")
+    env.spec.end_state = 1
+    agent.run(env, logger)
 
-    
+    print("Second Stage")
+    # Update Goal
+    env.spec.end_state = 2
+    # Clear Buffer
+    agent.buffer.buffer.clear()
+    # Set New Number of Max Episodes
+    agent.max_episodes = cfg.agent.max_episodes*2
+    # Run
+    agent.run(env, logger)
+
+    print("Third Stage")
+    env.spec.end_state = 3
+    # Clear Buffer
+    agent.buffer.buffer.clear()
+    # Set New Number of Max Episodes
+    agent.max_episodes = cfg.agent.max_episodes*3
+    # Run
+    agent.run(env, logger)
+
+@hydra.main(version_base=None, config_path="config", config_name="config")
+def main(cfg : DictConfig) -> None: 
          
     # Load env   
     ##########
@@ -57,37 +86,14 @@ def main(cfg : DictConfig) -> None:
     if cfg.agent.name=="OC": experiment=f"{experiment}_{cfg.agent.num_options}opt"
     run_name="{}_{}_{}".format(cfg.agent.name, cfg.env.name, experiment)
 
-    logger = TensorboardLogger(
+    logger = loggers[cfg.logger.type](
         parameters, run_name
     )
 
     # Load  pretrained model if set
     # agent.load(cfg)
 
-    # Train
-    print("First Stage")
-    env.spec.end_state = 1
     agent.run(env, logger)
-
-    print("Second Stage")
-    # Update Goal
-    env.spec.end_state = 2
-    # Clear Buffer
-    agent.buffer.buffer.clear()
-    # Set New Number of Max Episodes
-    agent.max_episodes = cfg.agent.max_episodes*2
-    # Run
-    agent.run(env, logger)
-
-    print("Third Stage")
-    env.spec.end_state = 3
-    # Clear Buffer
-    agent.buffer.buffer.clear()
-    # Set New Number of Max Episodes
-    agent.max_episodes = cfg.agent.max_episodes*3
-    # Run
-    agent.run(env, logger)
-
 
     # Save Model
     # agent.save(cfg, run_name)

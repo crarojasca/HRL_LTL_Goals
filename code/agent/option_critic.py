@@ -65,12 +65,12 @@ class OptionCriticFeatures(nn.Module):
             input_dim = in_features
         elif features_encoding=="mlp":
             self.features = nn.Sequential(
-                nn.Linear(in_features, 32),
+                nn.Linear(in_features, 512),
                 nn.ReLU(),
-                nn.Linear(32, 64),
+                nn.Linear(512, 256),
                 nn.ReLU()
             )
-            input_dim = 64        
+            input_dim = 256        
 
         self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
@@ -79,7 +79,7 @@ class OptionCriticFeatures(nn.Module):
         self.options = torch.nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(input_dim, 64),
+                    nn.Linear(input_dim, 128),
                     nn.ReLU(),
                     nn.Linear(64, num_actions)
                 ) for _ in range(num_options)
@@ -163,7 +163,7 @@ class OptionCriticFeatures(nn.Module):
   
 class OptionCritic:
 
-    def __init__(self, observation_space, action_space, args, logger) -> None:
+    def __init__(self, observation_space, action_space, args) -> None:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
 
@@ -190,13 +190,11 @@ class OptionCritic:
         # Create a prime network for more stable Q values
         self.option_critic_prime = deepcopy(self.option_critic)
 
-        total_params = sum(p.numel() for p in self.option_critic.parameters())
-        print(f"\nNumber of parameters: {total_params}\n")
+        self.number_parameters = sum(p.numel() for p in self.option_critic.parameters())
 
         self.optim = torch.optim.RMSprop(self.option_critic.parameters(), lr=args.learning_rate)
 
         self.buffer = ReplayBuffer(capacity=args.max_history, seed=args.seed)
-        self.logger = logger
         
         self.max_steps_ep = args.max_steps_ep
 
@@ -291,7 +289,7 @@ class OptionCritic:
         actor_loss = termination_loss + policy_loss
         return actor_loss
 
-    def run(self, env):
+    def run(self, env, logger=None):
 
         reward_list=[]
 
@@ -352,11 +350,16 @@ class OptionCritic:
                 curr_op_len += 1
                 obs = next_obs
 
-                            
-                self.logger.log_data(
-                    self.steps, reward, actor_loss, critic_loss, entropy.item(), epsilon, action, probs)
+
+                if logger:      
+                    logger.log_data(
+                        self.steps, reward, actor_loss, 
+                        critic_loss, entropy.item(), epsilon)
 
             reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
             self.episodes += 1
-            self.logger.log_episode(self.steps, ep_steps, self.episodes, ep_reward, mean_reward, epsilon, option_lengths)
+
+            if logger:
+                logger.log_episode(
+                    self.steps, ep_steps, self.episodes, ep_reward, mean_reward, epsilon, option_lengths)

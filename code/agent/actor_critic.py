@@ -28,10 +28,12 @@ class NN(nn.Module):
         v = self.v(x)
         return (pi, v)
     
+    
 
 class ActorCritic():
     def __init__(self, observation_space, action_space, args=None):
 
+        
         self.device = T.device('cuda' if T.cuda.is_available() else 'cpu')
 
         # Parameters
@@ -44,7 +46,7 @@ class ActorCritic():
 
         # Replay Memory
         self.memory = ReplayMemory(
-            args.replay_memory.max_history, 
+            args.replay_memory.max_history, device=self.device,
             values=('state', 'logp', 'next_state', 'reward', "done"), seed=42)
         
         # Networks
@@ -61,7 +63,7 @@ class ActorCritic():
         probabilities = F.softmax(probabilities, dim=-1)
         action_probs = T.distributions.Categorical(probabilities)
         action = action_probs.sample()
-        logp = action_probs.log_prob(action).view(1, 1)
+        logp = action_probs.log_prob(action).cpu().detach().numpy()
         entropy = action_probs.entropy()
 
         return action.item(), logp, entropy
@@ -72,14 +74,15 @@ class ActorCritic():
 
         state, logp, reward, next_state, done = \
                                 self.memory.sample(self.batch_size)
+        done = done.type(T.int8)
 
         # Get Critic Values
         with T.no_grad():
             _, critic_value_ = self.target_network.forward(next_state)
         _, critic_value = self.network.forward(state)
-
+        
         # Compute delta
-        delta = reward + (1-done)*self.gamma*critic_value_
+        delta = reward + (1-done.type(T.int8))*self.gamma*critic_value_
 
         actor_loss = -T.mean(logp*(delta-critic_value))
         critic_loss = F.mse_loss(delta, critic_value)
@@ -98,7 +101,6 @@ class ActorCritic():
         episodes = 0
         reward_list=[]
 
-
         while episodes < self.max_episodes:
 
             ep_reward = 0
@@ -114,13 +116,10 @@ class ActorCritic():
 
                 # Take action in the env
                 next_obs, reward, done, truncated, info = env.step(action)
-                # Set values
-                next_state = T.tensor(next_obs, dtype=T.float32, device=self.device).view(1, -1)
-                reward = T.tensor(reward, device=self.device).view(1, 1)
-                done = T.tensor(done, dtype=T.int8, device=self.device).view(1, 1)
+        
                 # Store transition in buffer
                 self.memory.push(
-                    state, logp, reward, next_state, done)
+                    obs, logp, reward, next_obs, done)
                 # Update NN parameters
                 actor_loss, critic_loss = self.optimize()
 
@@ -142,9 +141,9 @@ class ActorCritic():
                         steps, reward, actor_loss, critic_loss, entropy, 0)
                             
 
-            reward_list += [ep_reward.cpu().item()]
+            reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
             episodes += 1
 
             if logger:
-                logger.log_episode(steps, ep_steps, episodes, ep_reward.item(), mean_reward, 0)
+                logger.log_episode(steps, ep_steps, episodes, ep_reward, mean_reward, 0)

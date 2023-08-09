@@ -1,16 +1,18 @@
+hydra:
+  sweeper:
+    params:
+      experiment: range(1, 50)
+
 experiment: 1
 logger:
+  type: wandb
   folder_path: runs
   wandb_project: HRL
 model:
   path: models
   load_model: null
 defaults:
-  - env: fourrooms
-  - agent: a2c
+  - env: sapientino
+  - agent: oc
   - _self_
 
-hydra:
-  sweeper:
-    params:
-      experiment: range(50)

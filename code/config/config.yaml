@@ -16,5 +16,6 @@ model:
 defaults:
   - env: sapientino
   - agent: oc
+  - override hydra/launcher: joblib
   - _self_
 

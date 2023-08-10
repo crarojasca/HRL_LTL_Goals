@@ -15,6 +15,7 @@ model:
   load_model: null
 defaults:
   - env: sapientino
-  - agent: oc
-  - _self_
-
+  - agent: sarsa
+  - override hydra/launcher: joblib
+  - _self_  
+  

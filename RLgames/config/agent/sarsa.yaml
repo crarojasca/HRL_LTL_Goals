@@ -1,0 +1,8 @@
+name: TabularSarsa
+seed: 42
+gamma: 0.99
+epsilon: 0.1
+alpha: -1
+lambdae: -1
+nstep: 100
+niter: 5000

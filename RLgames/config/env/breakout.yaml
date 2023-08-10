@@ -1,0 +1,6 @@
+seed: 42
+name: breakout
+render: False
+brick_rows: 2
+brick_cols: 5
+fire_enabled: False

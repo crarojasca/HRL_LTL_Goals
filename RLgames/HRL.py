@@ -4,68 +4,69 @@ from game import (
     loadGameModule, loadAgentModule, load, writeinfo,
     evaluate, learn
 )
-from option_critic.logger import WanDBLogger as Logger
-# from option_critic.option_critic import Agent
+from logger import WanDBLogger, TensorboardLogger
 
-@dataclass
-class args:
-    name = "1"
-    seed = 42
-    game = "Sapientino3C" # BreakoutNRA Sapientino3C
-    agent = "Sarsa"
-    trainfile = "Sapiento_Best_2" 
-    rows = 2
-    cols = 5
-    gamma = 0.99
-    epsilon = 0.1
-    alpha = -1
-    lambdae = -1
-    nstep = 100
-    niter = 20000
+import hydra
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
 
-    debug = False
-    gui = True
-    sound = False
-    eval = False
-    stopongoal = False
 
-@dataclass
-class agent_args:
-    num_options=4
-    name="OC_10"
-    env='NRA_NewHyper' 
-    logdir='runs' 
-    max_episodes=50000
-    batch_size=240 
-    cuda=True 
-    entropy_reg=0.01 
-    epsilon_decay=20000
-    epsilon_min=0.1
-    epsilon_start=1.0 
-    freeze_interval=1000
-    gamma=0.999 
-    learning_rate=0.00025 
-    max_history=1000000 
-    max_steps_ep=18000 
-    max_steps_total=5000
-    optimal_eps=0.05 
-    seed=42 
-    temp=1 
-    termination_reg=0.01 
-    update_frequency=4
+# @dataclass
+# class args:
+#     name = "1"
+#     seed = 42
+#     game = "Sapientino3C" # BreakoutNRA Sapientino3C
+#     agent = "Sarsa"
+#     trainfile = "Sapiento_Best_2" 
+#     rows = 2
+#     cols = 5
+#     gamma = 0.99
+#     epsilon = 0.1
+#     alpha = -1
+#     lambdae = -1
+#     nstep = 100
+#     niter = 20000
+
+#     debug = False
+#     gui = True
+#     sound = False
+#     eval = False
+#     stopongoal = False
+
+# @dataclass
+# class agent_args:
+#     num_options=4
+#     name="OC_10"
+#     env='NRA_NewHyper' 
+#     logdir='runs' 
+#     max_episodes=50000
+#     batch_size=240 
+#     cuda=True 
+#     entropy_reg=0.01 
+#     epsilon_decay=20000
+#     epsilon_min=0.1
+#     epsilon_start=1.0 
+#     freeze_interval=1000
+#     gamma=0.999 
+#     learning_rate=0.00025 
+#     max_history=1000000 
+#     max_steps_ep=18000 
+#     max_steps_total=5000
+#     optimal_eps=0.05 
+#     seed=42 
+#     temp=1 
+#     termination_reg=0.01 
+#     update_frequency=4
 
 
 def init_game(args, trainname, agent):
     game = loadGameModule(args, trainname)
     # set parameters
-    game.debug = args.debug
-    game.gui_visible = args.gui
-    game.sound_enabled = args.sound
-    if (args.debug):
-        game.sleeptime = 1.0
-        game.gui_visible = True
+    game.debug = False
+    game.gui_visible = args.env.render
+    game.sound_enabled = False
     
-    game.setRandomSeed(args.seed)
+    game.setRandomSeed(args.env.seed)
     game.init(agent)
 
         # load saved data
@@ -77,51 +78,49 @@ def init_game(args, trainname, agent):
         writeinfo(args, trainname, game, agent, init=True)
     return game
 
+@hydra.main(version_base=None, config_path="config", config_name="config")
+def main(cfg : DictConfig) -> None: 
 
+    run_name="{}_{}_{}".format(cfg.agent.name, cfg.env.name, cfg.experiment)
 
-if not os.path.exists(f"data/{args.trainfile}/"):
-    print("Creating directory")
-    os.makedirs(f"data/{args.trainfile}/")
+    if not os.path.exists(f"data/{run_name}/"):
+        print("Creating directory")
+        os.makedirs(f"data/{run_name}/")
 
-# load game and agent modules
+    # load game and agent modules
 
-agent = loadAgentModule(args)
-agent.gamma = args.gamma
-agent.epsilon = args.epsilon
-agent.alpha = args.alpha
-agent.nstepsupdates = args.nstep
-agent.lambdae = args.lambdae
-agent.debug = args.debug
-agent.setRandomSeed(args.seed)
+    agent = loadAgentModule(cfg)
+    agent.gamma = cfg.agent.gamma
+    agent.epsilon = cfg.agent.epsilon
+    agent.alpha = cfg.agent.alpha
+    agent.nstepsupdates = cfg.agent.nstep
+    agent.lambdae = cfg.agent.lambdae
+    agent.debug = False
+    agent.setRandomSeed(cfg.agent.seed)
 
+    parameters = OmegaConf.to_container(cfg, resolve=True)
+    # parameters["agent"]["number_parameters"] = agent.number_parameters
+    parameters["agent"]["device"] = "cpu"
 
-# learning or evaluation process
-if (args.eval):
-    game = init_game(args, args.trainfile, agent)
-    evaluate(game, agent, 10)
-else:       
-
-    run_name = "{}-{}-{}".format(args.agent, args.game, args.name) 
-
-    logger = Logger(
-        "HRL", run_name
+    logger = WanDBLogger(
+        parameters, run_name
     )
 
     # # First round
     # args.game = "BreakoutN"
-    # game = init_game(args, args.trainfile, agent)
+    # game = init_game(args, run_name, agent)
     # optimalPolicyFound = learn(args, game, agent, logger)
-    # writeinfo(args, args.trainfile,game, agent, False, optimalPolicyFound)
+    # writeinfo(args, run_name,game, agent, False, optimalPolicyFound)
 
     # # Second Round
     # args.game = "BreakoutNRA"
     # args.game = "Sapientino3C"
     
-    game = init_game(args, args.trainfile, agent)
+    game = init_game(cfg, run_name, agent)
     # game.iteration = args.niter
     # args.niter = args.niter*2
-    optimalPolicyFound = learn(args, game, agent, logger)
-    writeinfo(args, args.trainfile, game, agent, False, optimalPolicyFound)
+    optimalPolicyFound = learn(cfg, game, agent, logger)
+    writeinfo(cfg, run_name, game, agent, False, optimalPolicyFound)
 
 
     ## OPTION CRITIC
@@ -129,9 +128,12 @@ else:
     # agent_oc = Agent(agent_args)
     # agent_oc.run(game)
 
-print("Experiment terminated after iteration: %d!!!\n" %game.iteration)
-#print('saving ...')
-#save()
-print('Game over')
-game.quit()
+    print("Experiment terminated after iteration: %d!!!\n" %game.iteration)
+    #print('saving ...')
+    #save()
+    print('Game over')
+    game.quit()
+
+if __name__=="__main__":
+    main()
 

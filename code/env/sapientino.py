@@ -218,7 +218,6 @@ class Sapientino(object):
         self.ncolors = ncol
         self.differential = False
         self.colorsensor = True
-        self.motionnoise = True
         
         # Configuration
         self.pause = False # game is paused

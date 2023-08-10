@@ -123,18 +123,20 @@ GAMES = {
 
 
 def loadGameModule(args, trainname):
-    print("Loading game %s" %args.game)
+    print("Loading game %s" %args.env.name)
     try:
         # default sizes
-        if 'Sapientino' in args.game:
-            args.rows = 5 
-            args.cols = 7
-        elif 'Minecraft' in args.game:
-            args.rows = 10 
-            args.cols = 10
-        game = eval(GAMES[args.game][0])(args.rows, args.cols, trainname)
-        if GAMES[args.game][1] is not None:
-            exec(GAMES[args.game][1])
+        if 'sapientino' in args.env.name:
+            args.env.rows = 5 
+            args.env.cols = 7
+            name = "Sapientino2"
+        elif 'Minecraft' in args.env.name:
+            args.env.rows = 10 
+            args.env.cols = 10
+            name = 'Minecraft'
+        game = eval(GAMES[name][0])(args.env.rows, args.env.cols, trainname)
+        if GAMES[name][1] is not None:
+            exec(GAMES[name][1])
 
         if True:
             pass
@@ -160,7 +162,7 @@ def loadGameModule(args, trainname):
             print("ERROR: game %s not found." %args.game)
             sys.exit(1)
     except:
-        print("ERROR: game %s not found." %args.game)
+        print("ERROR: game %s not found." %args.env.name)
         raise
         sys.exit(1)
     return game
@@ -170,7 +172,7 @@ def loadGameModule(args, trainname):
 AGENTS = {
 
     'Q': [ "importlib.import_module('RLAgent').QAgent", None ],
-    'Sarsa': [ "importlib.import_module('RLAgent').SarsaAgent", None ],
+    'TabularSarsa': [ "importlib.import_module('RLAgent').SarsaAgent", None ],
     'SarsaLin': [ "importlib.import_module('RLAgent').SarsaAgent", 
                   "agent.Qapproximation = True" ],
     'MC': [ "importlib.import_module('RLMCAgent').MCAgent", None ],
@@ -179,13 +181,13 @@ AGENTS = {
 
 
 def loadAgentModule(args):
-    print("Loading agent "+args.agent)
+    print("Loading agent "+ args.agent.name)
     try:
-        agent = eval(AGENTS[args.agent][0])()
-        if AGENTS[args.agent][1] is not None:
-            exec(AGENTS[args.agent][1])
+        agent = eval(AGENTS[args.agent.name][0])()
+        if AGENTS[args.agent.name][1] is not None:
+            exec(AGENTS[args.agent.name][1])
     except:
-        print("ERROR: agent %s not found." %args.agent)
+        print("ERROR: agent %s not found." %args.agent.name)
         raise
         sys.exit(1)
     return agent
@@ -232,15 +234,15 @@ def writeinfo(args, trainname, game, agent, init=True, optimalPolicyFound=False)
     if (init):
         infofile.write("Date:    %s\n" %(strtime))
         infofile.write("Train:   %s\n" %(trainname))
-        infofile.write("Game:    %s\n" %(args.game))
-        infofile.write("Size:    %d x %d\n" %(args.rows, args.cols))
+        infofile.write("Game:    %s\n" %(args.env.name))
+        infofile.write("Size:    %d x %d\n" %(args.env.rows, args.env.cols))
         infofile.write("Agent:   %s\n" %(agent.name))
         infofile.write("gamma:   %f\n" %(agent.gamma))
         infofile.write("epsilon: %f\n" %(agent.epsilon))
         infofile.write("alpha:   %f\n" %(agent.alpha))
         infofile.write("n-step:  %d\n" %(agent.nstepsupdates))
         infofile.write("lambda:  %f\n\n" %(agent.lambdae))
-        infofile.write("\n%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%.3f\n" %(strtime,trainname,args.game,args.rows,args.cols,agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
+        infofile.write("\n%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%.3f\n" %(strtime,trainname,args.env.name,args.env.rows,args.env.cols,agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
         #allinfofile.write("%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%f\n" %(strtime,trainname,args.game,args.rows,args.cols,agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
     else:
         infofile.write("iteration:        %d\n" %(game.iteration))
@@ -326,7 +328,7 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
     mean_reward = []
     episode = 0
     steps = 0
-    while (run and (args.niter<0 or game.iteration<=args.niter)):
+    while (run and (args.agent.niter<0 or game.iteration<=args.agent.niter)):
         game.reset() # increment game.iteration
         game.draw()
         time.sleep(game.sleeptime)
@@ -355,8 +357,9 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
             steps+=1
             ep_steps+=1
 
-            logger.log_data(
-                    steps, game.current_reward, 0, 0, 0, 0.1, 0, 0)
+            # logger.log_data(
+            #             steps, game.current_reward, 0, 
+            #             0, 0, 0.1)
 
         # episode finished
         if (game.finished):
@@ -367,7 +370,8 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
             mean_reward += [game.cumreward]
             mean_reward = np.mean(mean_reward[-100:])
             episode += 1
-            logger.log_episode(steps, ep_steps, episode, game.cumreward, mean_reward, 0.1, None)
+            logger.log_episode(
+                    steps, ep_steps, episode, game.cumreward, mean_reward, 0.1)
             time.sleep(game.sleeptime)
 
         # end of experiment

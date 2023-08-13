@@ -1,11 +1,11 @@
 hydra:
   launcher:
-    n_jobs: 5
+    n_jobs: 3
   sweeper:
     params:
       experiment: range(1, 50)
 
-experiment: 1
+experiment: colors_features
 logger:
   type: wandb
   folder_path: logs

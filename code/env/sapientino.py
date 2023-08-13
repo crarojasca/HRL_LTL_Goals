@@ -278,7 +278,7 @@ class Sapientino(object):
 
         self.action_space = spaces.Discrete(5)
         self.observation_space = spaces.Box(
-            low=0., high=1., shape=(5 + len(TOKENS),))
+            low=0., high=1., shape=(5 + len(TOKENS) + len(COLORS),))
 
       
 
@@ -333,7 +333,10 @@ class Sapientino(object):
         diff = [self.pos_th/90]
         color = [self.encode_color()]
 
+        # Tokens
         tokens = list(self.tokenbip.values())
+        # Colors
+        colors = list(self.colorbip.values())
 
         ra_state = [self.RA.RAnode]
 
@@ -341,7 +344,7 @@ class Sapientino(object):
         # # print(len(ra_state), self.RA.RAnode)
         # ra_state[self.RA.RAnode] = 1
 
-        state = pos + diff + color + tokens + ra_state
+        state = pos + diff + color + tokens + colors + ra_state
         return state
     
     def getstate(self):

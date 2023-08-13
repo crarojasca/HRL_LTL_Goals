@@ -3,5 +3,5 @@ name: sapientino
 rows: 5
 cols: 7 
 ncol: 7
-nvisitpercol: 2
+nvisitpercol: 3
 render: False

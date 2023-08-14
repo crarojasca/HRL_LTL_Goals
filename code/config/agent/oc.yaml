@@ -13,7 +13,7 @@ max_episodes: 20000
 max_steps_ep: 18000 
 
 network:
-  features_encoding: mlp
+  features_encoding: conv
   dimensions:
     - 512
     - 256

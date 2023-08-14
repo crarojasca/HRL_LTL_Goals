@@ -71,7 +71,7 @@ def main(cfg : DictConfig) -> None:
     # Load Agent
     ############
     agent = agents[cfg.agent.name](
-            observation_space=env.observation_space.shape[0], 
+            observation_space=env.observation_space, 
             action_space=env.action_space.n,
             args=cfg.agent
     )

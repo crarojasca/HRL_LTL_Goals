@@ -9,6 +9,7 @@ from math import fabs
 import gym
 from gym import spaces
 from gym.utils import seeding
+from collections import namedtuple
 
 COLORS = ['red', 'green', 'blue', 'pink', 'brown', 'gray', 'purple' ]
 
@@ -202,7 +203,7 @@ class RewardAutoma(object):
 class Sapientino(object):
 
     def __init__(self, seed=42, rows=5, cols=7, name=None, trainsessionname='test', 
-                 ncol=7, nvisitpercol=2, render=False):
+                 ncol=7, nvisitpercol=2, type_state="features", render=False):
 
         random.seed(seed)
         np.random.seed(seed)
@@ -218,6 +219,7 @@ class Sapientino(object):
         self.ncolors = ncol
         self.differential = False
         self.colorsensor = True
+        self.type_state = type_state
         
         # Configuration
         self.pause = False # game is paused
@@ -259,11 +261,9 @@ class Sapientino(object):
         pygame.init()
         pygame.display.set_caption('Sapientino')
 
-        self.screen = pygame.display.set_mode([self.win_width,self.win_height])
+        flags = pygame.HIDDEN if (not self.gui_visible) else pygame.SHOWN
+        self.screen = pygame.display.set_mode([self.win_width,self.win_height], flags=flags)
         self.myfont = pygame.font.SysFont("Arial",  30)
-
-        if (not self.gui_visible):
-            pygame.display.iconify()
 
         self.nactions = 5  # 0: left, 1: right, 2: up, 3: down, 4: bip
 
@@ -277,8 +277,23 @@ class Sapientino(object):
             self.nstates *= self.ncolors+1
 
         self.action_space = spaces.Discrete(5)
-        self.observation_space = spaces.Box(
-            low=0., high=1., shape=(5 + len(TOKENS) + len(COLORS),))
+
+        State_cfg = namedtuple("State_cfg", ["observation_space", "get_state"])
+        self.state_cfg = {
+            "integer": State_cfg(
+                observation_space=spaces.Discrete(1), get_state=self.integerState),
+            "features": State_cfg(
+                spaces.Box(low=0., high=1., shape=(5 + len(TOKENS) + len(COLORS),)), 
+                self.featuresState),
+            "screen": State_cfg(
+                observation_space={
+                    "env": spaces.Box(low=0., high=255., shape=(self.win_height, self.win_height, 3)),
+                    "spec": spaces.Discrete(1)
+                }, 
+                get_state=self.screenState),
+        }
+
+        self.observation_space = self.state_cfg[self.type_state].observation_space
 
       
 
@@ -319,7 +334,7 @@ class Sapientino(object):
         return self.nstates
 
 
-    def numericState(self):
+    def integerState(self):
         x = self.pos_x + self.cols * self.pos_y
         if (self.differential):
             x += (self.pos_th/90) * (self.rows * self.cols)
@@ -328,7 +343,7 @@ class Sapientino(object):
         x += self.nstates * self.RA.RAnode     
         return [x]
     
-    def vectorState(self):
+    def featuresState(self):
         pos = [self.pos_x, self.pos_y]
         diff = [self.pos_th/90]
         color = [self.encode_color()]
@@ -340,15 +355,24 @@ class Sapientino(object):
 
         ra_state = [self.RA.RAnode]
 
-        # ra_state = [0] * (self.RA.nRAstates + 2)
-        # # print(len(ra_state), self.RA.RAnode)
-        # ra_state[self.RA.RAnode] = 1
-
         state = pos + diff + color + tokens + colors + ra_state
         return state
     
+    def screenState(self):
+
+        screen_state = pygame.surfarray.array3d(self.screen)
+        screen_state = screen_state.swapaxes(0,1)
+        ra_state = np.array([self.RA.RAnode])
+
+        state = {
+            "env": screen_state,
+            "spec": ra_state
+        }
+
+        return screen_state
+    
     def getstate(self):
-        return self.vectorState()
+        return self.state_cfg[self.type_state].get_state()
 
     def goal_reached(self):
         return self.RA.RAnode==self.RA.RAGoal

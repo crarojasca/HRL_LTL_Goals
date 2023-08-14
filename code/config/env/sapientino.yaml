@@ -5,3 +5,4 @@ cols: 7
 ncol: 7
 nvisitpercol: 3
 render: False
+type_state: "screen"

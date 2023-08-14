@@ -7,7 +7,7 @@ hydra:
 
 experiment: 1
 logger:
-  type: wandb
+  type: tensorboard
   folder_path: logs
   wandb_project: HRL
 model:

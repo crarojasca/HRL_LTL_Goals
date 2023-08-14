@@ -1,6 +1,7 @@
 import os
 import torch
 import torch.nn as nn
+import torchvision.transforms as T
 from torch.distributions import Categorical, Bernoulli
 
 import numpy as np
@@ -61,17 +62,34 @@ class Network(nn.Module):
         self.eps = eps_start
         self.num_steps = 0
 
-        if not features_encoding:
+        self.features_encoding = features_encoding
+
+        if not self.features_encoding:
             self.features = lambda x: x
-            input_dim = in_features
+            input_dim = in_features.shape[0]
         elif features_encoding=="mlp":
             self.features = nn.Sequential(
-                nn.Linear(in_features, dims[0]),
+                nn.Linear(in_features.shape[0], dims[0]),
                 nn.ReLU(),
                 nn.Linear(dims[0], dims[1]),
                 nn.ReLU()
             )
-            input_dim = dims[1]        
+            input_dim = dims[1]   
+        elif self.features_encoding=="conv":
+            self.features = nn.Sequential(
+                nn.Conv2d(3, 32, kernel_size=8, stride=4),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=4, stride=2),
+                nn.ReLU(),
+                nn.Conv2d(64, 64, kernel_size=3, stride=1),
+                nn.ReLU(),
+                nn.modules.Flatten(),
+                nn.Linear(3136, 512),
+                nn.ReLU()
+            ).to(device)
+            # self.features = lambda state: torch.cat(
+            #     (env_features(state["env"]), state["spec"]))  
+            input_dim = 512 #+ self.in_features["spec"].n
 
         self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
@@ -92,9 +110,17 @@ class Network(nn.Module):
 
     def get_state(self, obs):
         # For the state sample case
-        if obs.ndim < 4:
+        # if self.features_encoding=="conv":
+        #     obs["env"] = torch.tensor(obs["env"], dtype=torch.float32, device=self.device)
+        #     obs["env"] = obs["env"].permute(2, 0, 1)
+        #     obs["spec"] = torch.tensor(obs["spec"], dtype=torch.float32, device=self.device)
+        # else:
+        obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
+        if obs.ndim <= 3:
             obs = obs.unsqueeze(0)
-        obs = obs.to(self.device)
+        if self.features_encoding=="conv":
+            obs = obs.permute(0, 3, 1, 2)
+        obs = T.Resize(size=(85, 85))(obs)
         state = self.features(obs)
         return state
 
@@ -237,15 +263,15 @@ class OptionCritic:
         masks     = 1 - torch.FloatTensor(dones).to(model.device)
 
         # The loss is the TD loss of Q and the update target, so we need to calculate Q
-        states = model.get_state(self.to_tensor(obs)).squeeze(0)
+        states = model.get_state(obs).squeeze(0)
         Q      = model.get_Q(states)
         
         # the update target contains Q_next, but for stable learning we use prime network for this
-        next_states_prime = model_prime.get_state(self.to_tensor(next_obs)).squeeze(0)
+        next_states_prime = model_prime.get_state(next_obs).squeeze(0)
         next_Q_prime      = model_prime.get_Q(next_states_prime) # detach?
 
         # Additionally, we need the beta probabilities of the next state
-        next_states            = model.get_state(self.to_tensor(next_obs)).squeeze(0)
+        next_states            = model.get_state(next_obs).squeeze(0)
         next_termination_probs = model.get_terminations(next_states).detach()
         next_options_term_prob = next_termination_probs[batch_idx, options]
 
@@ -264,9 +290,9 @@ class OptionCritic:
 
     def actor_loss_fn(self, obs, option, logp, entropy, reward, 
                       done, next_obs, model, model_prime, args):
-        state = model.get_state(self.to_tensor(obs))
-        next_state = model.get_state(self.to_tensor(next_obs))
-        next_state_prime = model_prime.get_state(self.to_tensor(next_obs))
+        state = model.get_state(obs)
+        next_state = model.get_state(next_obs)
+        next_state_prime = model_prime.get_state(next_obs)
 
         option_term_prob = model.get_terminations(state)[:, option]
         next_option_term_prob = model.get_terminations(next_state)[:, option].detach()
@@ -297,7 +323,7 @@ class OptionCritic:
             ep_reward = 0 ; option_lengths = {opt:[] for opt in range(self.num_options)}
             
             obs, info = env.reset()
-            state = self.option_critic.get_state(self.to_tensor(obs))
+            state = self.option_critic.get_state(obs)
             greedy_option  = self.option_critic.greedy_option(state)
             current_option = 0
 
@@ -346,7 +372,7 @@ class OptionCritic:
                                 target_net_state_dict[key]*(1-self.tau)
                         self.option_critic_prime.load_state_dict(target_net_state_dict)
 
-                state = self.option_critic.get_state(self.to_tensor(next_obs))
+                state = self.option_critic.get_state(next_obs)
                 option_termination, greedy_option = self.option_critic.predict_option_termination(
                     state, current_option)
 

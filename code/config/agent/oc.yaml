@@ -22,7 +22,7 @@ network:
 epsilon:
   start: 0.9
   min: 0.1
-  decay: 400000
+  decay: 800000
   optimal: 0.05 
 
 replay_memory:

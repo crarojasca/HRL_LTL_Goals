@@ -5,7 +5,7 @@ hydra:
     params:
       experiment: range(1, 50)
 
-experiment: colors_features
+experiment: 1
 logger:
   type: wandb
   folder_path: logs

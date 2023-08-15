@@ -326,6 +326,7 @@ class Sapientino(object):
 
         # RA exploration
         self.RA_exploration()
+        self.draw()
 
         return self.getstate(), None
 
@@ -360,7 +361,7 @@ class Sapientino(object):
     
     def screenState(self):
 
-        screen_state = pygame.surfarray.array3d(self.screen)
+        screen_state = pygame.surfarray.array3d(pygame.display.get_surface())
         screen_state = screen_state.swapaxes(0,1)
         ra_state = np.array([self.RA.RAnode])
 
@@ -550,16 +551,13 @@ class Sapientino(object):
             self.current_reward += STATES['Dead']
             self.finished = True
 
-        #print(" ** Update end ",self.getstate(), " prev ",self.prev_state)
-
-        #if (self.finished):
-        #    print("  -- final reward %d" %(self.cumreward))            
+           
 
         if (not self.finished and self.reward_shaping_enabled):
             self.current_reward += self.reward_shape(self.prev_state, self.getstate())
 
-        if self.gui_visible:
-            self.draw()
+        # Updates the screen
+        self.draw()
 
         return self.getstate(), self.current_reward, self.finished, False, None
 

@@ -4,6 +4,8 @@ import torch.nn as nn
 import torchvision.transforms as T
 from torch.distributions import Categorical, Bernoulli
 
+from torchvision.utils import save_image
+
 import numpy as np
 from math import exp
 
@@ -115,11 +117,16 @@ class Network(nn.Module):
         #     obs["env"] = obs["env"].permute(2, 0, 1)
         #     obs["spec"] = torch.tensor(obs["spec"], dtype=torch.float32, device=self.device)
         # else:
+
         obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
+    
         if obs.ndim <= 3:
             obs = obs.unsqueeze(0)
+        
         if self.features_encoding=="conv":
             obs = obs.permute(0, 3, 1, 2)
+        obs = T.functional.crop(obs, 100, 40, 200, 280)
+        # save_image(obs, 'img1.png')
         obs = T.Resize(size=(85, 85))(obs)
         state = self.features(obs)
         return state

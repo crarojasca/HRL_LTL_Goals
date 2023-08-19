@@ -1,5 +1,5 @@
 import numpy as np
-from .base import ReplayMemory
+from .replay_memory import ReplayMemory
 
 import torch as T
 import torch.nn as nn

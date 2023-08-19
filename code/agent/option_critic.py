@@ -15,21 +15,23 @@ from collections import deque
 
 from omegaconf import OmegaConf
 
+from .replay_memory import ReplayMemory
 
-class ReplayBuffer(object):
-    def __init__(self, capacity, seed=42):
-        self.rng = random.SystemRandom(seed)
-        self.buffer = deque(maxlen=capacity)
 
-    def push(self, obs, option, reward, next_obs, done):
-        self.buffer.append((obs, option, reward, next_obs, done))
+# class ReplayBuffer(object):
+#     def __init__(self, capacity, seed=42):
+#         self.rng = random.SystemRandom(seed)
+#         self.buffer = deque(maxlen=capacity)
 
-    def sample(self, batch_size):
-        obs, option, reward, next_obs, done = zip(*self.rng.sample(self.buffer, batch_size))
-        return np.stack(obs), option, reward, np.stack(next_obs), done
+#     def push(self, obs, option, reward, next_obs, done):
+#         self.buffer.append((obs, option, reward, next_obs, done))
 
-    def __len__(self):
-        return len(self.buffer)
+#     def sample(self, batch_size):
+#         obs, option, reward, next_obs, done = zip(*self.rng.sample(self.buffer, batch_size))
+#         return np.stack(obs), option, reward, np.stack(next_obs), done
+
+#     def __len__(self):
+#         return len(self.buffer)
 
 
 
@@ -95,14 +97,14 @@ class Network(nn.Module):
 
         self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
-        # self.options_W = nn.Parameter(torch.zeros(num_options, input_dim, num_actions))
+        # self.options_W = nn.Parameter(torch.zeros(num_options, dims[-1], num_actions))
         # self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
         self.options = torch.nn.ModuleList(
             [
                 nn.Sequential(
                     nn.Linear(input_dim, dims[-1]),
-                    nn.ReLU(),
-                    nn.Linear(dims[-1], num_actions)
+                    # nn.ReLU(),
+                    # nn.Linear(dims[-1], num_actions)
                 ) for _ in range(num_options)
             ]
         )
@@ -175,10 +177,10 @@ class Network(nn.Module):
         logits = self.options[option](state)
         probs = (logits / self.temperature).softmax(dim=-1)
 
-        if self.num_options==1:
-            return self.epsilon_exploration(probs)
-        else:
-            return self.boltzmann_exploration(probs)
+        # if self.num_options==1:
+        #     return self.epsilon_exploration(probs)
+        # else:
+        return self.boltzmann_exploration(probs)
         
     def greedy_option(self, state):
         Q = self.get_Q(state)
@@ -190,7 +192,8 @@ class Network(nn.Module):
 
     def update_epsilon(self):
         if not self.testing:
-            self.eps = self.eps_min + (self.eps_start - self.eps_min) * exp(-self.num_steps / self.eps_decay)
+            self.eps = self.eps_min + (self.eps_start - self.eps_min)\
+                  * exp(-self.num_steps / self.eps_decay)
             self.num_steps += 1
         else:
             self.eps = self.eps_test
@@ -236,8 +239,14 @@ class OptionCritic:
 
         # Replay Memory
         self.batch_size = args.replay_memory.batch_size
-        self.buffer = ReplayBuffer(
-            capacity=args.replay_memory.max_history, seed=args.seed)      
+        # self.buffer = ReplayBuffer(
+        #     capacity=args.replay_memory.max_history, seed=args.seed)    
+        
+        self.buffer = ReplayMemory(
+            capacity=args.replay_memory.max_history, 
+            values=("obs", "option", "reward", "next_obs", "done"),
+            seed=args.seed
+        )
         
         # Counters
         self.steps = 0

@@ -4,5 +4,5 @@ rows: 5
 cols: 7 
 ncol: 7
 nvisitpercol: 3
-render: True
-type_state: "screen"
+render: False
+type_state: "features" # integer - features - screen

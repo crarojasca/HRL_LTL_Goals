@@ -125,9 +125,10 @@ class Network(nn.Module):
         
         if self.features_encoding=="conv":
             obs = obs.permute(0, 3, 1, 2)
-        obs = T.functional.crop(obs, 100, 40, 200, 280)
-        # save_image(obs, 'img1.png')
-        obs = T.Resize(size=(85, 85))(obs)
+            obs = T.functional.crop(obs, 100, 40, 200, 280)
+            # save_image(obs, 'img1.png')
+            obs = T.Resize(size=(85, 85))(obs)
+            
         state = self.features(obs)
         return state
 
@@ -258,9 +259,9 @@ class OptionCritic:
             self.option_critic.load_state_dict(
                 checkpoint['model_params'])
 
-    def to_tensor(self, obs):
-        obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
-        return obs
+    # def to_tensor(self, obs):
+    #     obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
+    #     return obs
     
     def critic_loss_fn(self, model, model_prime, data_batch, args):
         obs, options, rewards, next_obs, dones = data_batch

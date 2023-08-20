@@ -8,7 +8,7 @@ hydra:
 experiment: 1
 note: three_layers
 logger:
-  type: tensorboard
+  type: wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False

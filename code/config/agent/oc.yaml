@@ -9,8 +9,8 @@ update_frequency: 1
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 20000
-max_steps_ep: 18000 
+max_episodes: 50000
+max_steps_ep: 350 
 
 network:
   features_encoding: mlp

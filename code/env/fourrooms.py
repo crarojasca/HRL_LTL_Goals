@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as animation
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 plt.ion()
 
 # from .specs import LDBA, Spec_Controller

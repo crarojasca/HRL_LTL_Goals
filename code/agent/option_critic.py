@@ -36,19 +36,9 @@ from .replay_memory import ReplayMemory
 
 
 class Network(nn.Module):
-    def __init__(self,
-                in_features,
-                num_actions,
-                num_options,
-                features_encoding="mlp",
-                dims=[128, 64, 32],
-                temperature=1.0,
-                eps_start=1.0,
-                eps_min=0.1,
-                eps_decay=int(1e6),
-                eps_test=0.05,
-                device='cpu',
-                testing=False):
+    def __init__(self, in_features, num_actions, num_options, features_encoding="mlp", 
+                 dims=[128, 64, 32], temperature=1.0, eps_start=1.0, eps_min=0.1, 
+                 eps_decay=int(1e6), eps_test=0.05, device='cpu', testing=False):
 
         super(Network, self).__init__()
         
@@ -103,8 +93,10 @@ class Network(nn.Module):
             [
                 nn.Sequential(
                     nn.Linear(input_dim, dims[-1]),
-                    # nn.ReLU(),
-                    # nn.Linear(dims[-1], num_actions)
+                    nn.ReLU(),
+                    nn.Linear(dims[-1], 64),
+                    nn.ReLU(),
+                    nn.Linear(64, num_actions)
                 ) for _ in range(num_options)
             ]
         )

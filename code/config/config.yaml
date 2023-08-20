@@ -1,14 +1,14 @@
 hydra:
   launcher:
-    n_jobs: 1
+    n_jobs: 4
   sweeper:
     params:
       experiment: range(1, 50)
 
 experiment: 1
-note: one_layer
+note: three_layer
 logger:
-  type: tensorboard
+  type: wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False

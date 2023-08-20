@@ -112,31 +112,7 @@ class ActorCritic():
 
         self.number_parameters = sum(p.numel() for p in self.network.parameters())        
 
-
-    # def choose_action(self, state):
-    #     probabilities, _ = self.network.forward(state)
-    #     probabilities = F.softmax(probabilities, dim=-1)
-    #     action_probs = T.distributions.Categorical(probabilities)
-    #     action = action_probs.sample()
-    #     logp = action_probs.log_prob(action).cpu().detach().numpy()
-    #     entropy = action_probs.entropy()
-
-    #     return action.item(), logp, entropy
-
-    def optimize(self):
-        if len(self.memory) < self.batch_size:
-            return None, None
-
-        obs, logp, reward, next_obs, done = \
-                                self.memory.sample(self.batch_size)
-        
-        # Cast the variables
-        obs = T.tensor(obs, dtype=T.float32, device=self.device)
-        logp = T.tensor(logp, dtype=T.float32, device=self.device)
-        reward = T.tensor(reward, dtype=T.float32, device=self.device)
-        next_obs = T.tensor(next_obs, dtype=T.float32, device=self.device)
-        done = T.tensor(done, dtype=T.int8, device=self.device)
-
+    def get_actor_loss(self, obs, logp, reward, next_obs, done):
         # Get Critic Values
         with T.no_grad():
             _, _, _, Q_ = self.target_network.forward(next_obs)
@@ -146,15 +122,21 @@ class ActorCritic():
         delta = reward + (1-done.type(T.int8))*self.gamma*Q_
 
         actor_loss = -T.mean(logp*(delta - Q))
+
+        return actor_loss
+    
+    def get_critic_loss(self, obs, reward, next_obs, done):
+        # Get Critic Values
+        with T.no_grad():
+            _, _, _, Q_ = self.target_network.forward(next_obs)
+        _, _, _, Q  = self.network.forward(obs)
+        
+        # Compute delta
+        delta = reward + (1-done.type(T.int8))*self.gamma*Q_
+
         critic_loss = F.mse_loss(delta, Q)
 
-        loss = actor_loss + critic_loss
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return actor_loss, critic_loss
+        return critic_loss
 
     def run(self, env, logger=None):
 
@@ -183,15 +165,45 @@ class ActorCritic():
                     obs, logp.cpu().detach().numpy(), reward, next_obs, done)
                 
                 # Optimize the main network
-                actor_loss, critic_loss = self.optimize()
+                
 
-                # Update NN parameters of the target network
-                target_net_state_dict = self.target_network.state_dict()
-                net_state_dict = self.network.state_dict()
-                for key in net_state_dict:
-                    target_net_state_dict[key] = net_state_dict[key]*self.tau \
-                            + target_net_state_dict[key]*(1-self.tau)
-                self.target_network.load_state_dict(target_net_state_dict)
+                
+                
+                actor_loss=None; critic_loss=None
+                # Cast the variables
+                if len(self.memory) > self.batch_size:
+                    
+                    # Compute the actor loss with thw current step
+                    done = T.tensor(done, dtype=T.int8, device=self.device)
+                    actor_loss = self.get_actor_loss(obs, logp, reward, next_obs, done)
+
+                    # Sample the Memory
+                    obs_b, logp_b, reward_b, next_obs_b, done_b = \
+                                self.memory.sample(self.batch_size)
+                    
+                    obs_b = T.tensor(obs_b, dtype=T.float32, device=self.device)
+                    logp_b = T.tensor(logp_b, dtype=T.float32, device=self.device)
+                    reward_b = T.tensor(reward_b, dtype=T.float32, device=self.device)
+                    next_obs_b = T.tensor(next_obs_b, dtype=T.float32, device=self.device)
+                    done_b = T.tensor(done_b, dtype=T.int8, device=self.device)
+
+                    # Compute the critic loss with the sample batch
+                    critic_loss = self.get_critic_loss(obs, reward, next_obs, done)
+
+                    loss = actor_loss + critic_loss
+
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+
+
+                    # Update NN parameters of the target network
+                    target_net_state_dict = self.target_network.state_dict()
+                    net_state_dict = self.network.state_dict()
+                    for key in net_state_dict:
+                        target_net_state_dict[key] = net_state_dict[key]*self.tau \
+                                + target_net_state_dict[key]*(1-self.tau)
+                    self.target_network.load_state_dict(target_net_state_dict)
 
                 # Update counters
                 ep_reward += reward    

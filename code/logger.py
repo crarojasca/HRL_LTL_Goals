@@ -15,6 +15,7 @@ class Logger():
         self.log_name = os.path.join(cfg["logger"]["folder_path"], run_name)    
         self.enable_log_step = cfg["logger"]["log_step"]
         self.enable_log_episode = cfg["logger"]["log_episode"]
+        self.enable_log_terminal = cfg["logger"]["log_terminal"]
 
         if not os.path.exists(self.log_name):
             os.makedirs(self.log_name)
@@ -39,8 +40,10 @@ class Logger():
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
         if not self.enable_log_episode:
             return
-        logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward} | episode_steps={ep_steps} "\
-            f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
+        
+        if self.enable_log_terminal:
+            logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward:3d} | episode_steps={ep_steps:5d} "\
+                f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
         
     def close(self):
         pass

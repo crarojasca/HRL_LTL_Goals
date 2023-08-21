@@ -9,6 +9,7 @@ from agent.sarsa import Sarsa
 from agent.dqn import DQN
 from agent.option_critic import OptionCritic
 from agent.actor_critic import ActorCritic
+from agent.ppo import PPO
 
 import hydra
 from hydra.utils import instantiate
@@ -24,7 +25,8 @@ agents = {
     "DQN": DQN,
     "OC": OptionCritic,
     "Sarsa": Sarsa,
-    "A2C": ActorCritic
+    "A2C": ActorCritic,
+    "PPO": PPO
 }
 
 envs = {

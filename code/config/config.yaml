@@ -1,18 +1,19 @@
 hydra:
   launcher:
-    n_jobs: 1
+    n_jobs: 4
   sweeper:
     params:
       experiment: range(1, 50)
 
 experiment: 1
-note: three_layers
+note: null
 logger:
   type: wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False
   log_episode: True
+  log_terminal: True
 
 model:
   path: models
@@ -20,7 +21,7 @@ model:
 
 defaults:
   - env: sapientino
-  - agent: oc
+  - agent: ppo
   - override hydra/launcher: joblib
   - _self_
 

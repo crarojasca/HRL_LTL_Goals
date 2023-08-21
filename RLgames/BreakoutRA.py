@@ -11,6 +11,7 @@ import random
 import time
 import math
 from math import fabs
+from option_critic.logger import Logger
 
 from Breakout import *
 
@@ -18,216 +19,154 @@ np.set_printoptions(precision=3)
 
 # Reward automa
 
-# class RewardAutoma(object):
-
-#     def __init__(self, brick_cols=0, type="left2right"): # brick_cols=0 -> RA disabled
-#         # RA states
-#         self.brick_cols = brick_cols
-#         if (self.brick_cols>0):
-#             self.nRAstates = brick_cols+2  # number of RA states
-#             self.RAGoal = self.nRAstates-2
-#             self.RAFail = self.nRAstates-1
-#         else: # RA disabled
-#             self.nRAstates = 2  # number of RA states
-#             self.RAGoal = 1 # never reached
-#             self.RAFail = 2 # never reached
-
-#         #1
-#         self.STATES = {
-#             'RAGoalStep':5,   # goal step of reward automa
-#             'RAGoal':10,      # goal of reward automa
-#             'RAFail':-1,         # fail of reward automa
-#             'GoodBrick':1,      # good brick removed for next RA state
-#             'WrongBrick':0      # wrong brick removed for next RA state
-#         }
-
-#         #2
-#         # self.STATES = {
-#         #     'RAGoalStep':100,   # goal step of reward automa
-#         #     'RAGoal':1000,      # goal of reward automa
-#         #     'RAFail':0,         # fail of reward automa
-#         #     'GoodBrick':10,      # good brick removed for next RA state
-#         #     'WrongBrick':0      # wrong brick removed for next RA state
-#         # }
-
-#         self.type = type
-#         self.goalreached = 0 # number of RA goals reached for statistics
-#         self.visits = {} # number of visits for each state
-#         self.success = {} # number of good transitions for each state
-#         self.reset()
-        
-#     def init(self, game):
-#         self.game = game
-        
-#     def reset(self):
-#         self.current_node = 0
-#         self.last_node = self.current_node
-#         self.countupdates = 0 # count state transitions (for the score)
-#         if (self.current_node in self.visits):
-#             self.visits[self.current_node] += 1
-#         else:
-#             self.visits[self.current_node] = 1
-
-
-#     # check if a column is free (used by RA)
-#     def check_free_cols(self, cols):
-#         cond = True
-#         for c in cols:
-#             for j in range(0,self.game.brick_rows):
-#                 if (self.game.bricksgrid[c][j]==1):
-#                     cond = False
-#                     break
-#         return cond
-
-#     # RewardAutoma Transition
-#     def update(self):
-#         reward = 0
-#         state_changed = False
-
-#         # RA disabled
-#         if (self.brick_cols==0):
-#             return (reward, state_changed)
-            
-#         for b in self.game.last_brikcsremoved:
-#             if b.i == self.current_node:
-#                 reward += self.STATES['GoodBrick']
-#                 #print 'Hit right brick for next RA state'
-#             else:
-#                 reward += self.STATES['WrongBrick']
-#                 #print 'Hit wrong brick for next RA state'
-
-#         f = np.zeros(self.brick_cols)
-#         for c in range(0,self.brick_cols):
-#             f[c] = self.check_free_cols([c])  # vector of free columns
-
-#         if (self.current_node<self.brick_cols): # 0 ... brick_cols
-#             if self.type == "left2right":
-#                 goal_column = self.current_node
-#                 cbegin = goal_column + 1
-#                 cend = self.brick_cols
-#                 cinc = 1
-#             elif self.type == "right2left":
-#                 goal_column = self.brick_cols - self.current_node - 1
-#                 cbegin = goal_column - 1
-#                 cend = -1
-#                 cinc = -1
-#             else:
-#                 raise(f"Type {self.type} not implemented.")
-
-#             if f[goal_column]:
-#                 state_changed = True
-#                 self.countupdates += 1
-#                 self.last_node = self.current_node
-#                 self.current_node += cinc
-#                 reward += self.STATES['RAGoal'] * self.countupdates / self.brick_cols
-#                 #print("  -- RA state transition to %d, " %(self.current_node))
-#                 if (self.current_node==self.RAGoal):
-#                     # print("  <<< RA GOAL >>>")
-#                     reward += self.STATES['RAGoal']
-#                     self.goalreached += 1
-#             else:
-#                 for c in range(cbegin, cend, cinc):
-#                     if f[c]:
-#                         self.last_node = self.current_node
-#                         self.current_node = self.RAFail  # FAIL
-#                         reward += self.STATES['RAFail']
-#                         #print("  *** RA FAIL *** ")
-#                         break
-
-#         elif (self.current_node==self.RAGoal): #  GOAL
-#             pass
-
-#         elif (self.current_node==self.RAFail): #  FAIL
-#             pass
-
-#         if (state_changed):
-#             if (self.current_node in self.visits):
-#                 self.visits[self.current_node] += 1
-#             else:
-#                 self.visits[self.current_node] = 1
-
-#             if (self.current_node != self.RAFail):
-#                 #print "Success for last_node ",self.last_node
-#                 if (self.last_node in self.success):
-#                     self.success[self.last_node] += 1
-#                 else:
-#                     self.success[self.last_node] = 1
-
-
-#         return (reward, state_changed)
-
-#     def current_successrate(self):
-#         s = 0.0
-#         v = 1.0
-#         if (self.current_node in self.success):
-#             s = float(self.success[self.current_node])
-#         if (self.current_node in self.visits):
-#             v = float(self.visits[self.current_node])
-#         #print "   -- success rate: ",s," / ",v
-#         return s/v
-
-#     def print_successrate(self):
-#         r = []
-#         for i in range(len(self.success)):
-#             r.append(float(self.success[i])/self.visits[i])
-#         print('RA success: %s' %str(r))
-
 class RewardAutoma(object):
 
-    def __init__(self, ncols=0, type="left2right"): # brick_cols=0 -> RA disabled
-        self.current_node = 0
+    def __init__(self, brick_cols=0, type="left2right"): # brick_cols=0 -> RA disabled
+        # RA states
+        self.brick_cols = brick_cols
+        if (self.brick_cols>0):
+            self.nRAstates = brick_cols+2  # number of RA states
+            self.RAGoal = self.nRAstates-2
+            self.RAFail = self.nRAstates-1
+        else: # RA disabled
+            self.nRAstates = 2  # number of RA states
+            self.RAGoal = 1 # never reached
+            self.RAFail = 2 # never reached
 
-        self.transitions = []
-        self.acceptances = []
-        for c1 in range(ncols):
-            state_transitions = {c2:c2 for c2 in range(ncols)} 
-            state_transitions[None] = c1
-            self.transitions.append(state_transitions)
-   
-            state_acceptances = {c2: (True if c2>=c1 else False) for c2 in range(ncols)} 
-            state_acceptances[None] = False
-            self.acceptances.append(state_acceptances)
+        self.STATES = {
+            'RAGoalStep':100,   # goal step of reward automa
+            'RAGoal':1000,      # goal of reward automa
+            'RAFail':0,         # fail of reward automa
+            'GoodBrick':10,      # good brick removed for next RA state
+            'WrongBrick':0      # wrong brick removed for next RA state
+        }
 
-        self.nRAstates = self.__len__()
-        self.RAGoal = self.__len__() + 1 #No Goal
-        self.RAFail = self.__len__() + 1 #No Fail
-        self.goalreached = 0
-
+        self.type = type
+        self.goalreached = 0 # number of RA goals reached for statistics
+        self.visits = {} # number of visits for each state
+        self.success = {} # number of good transitions for each state
+        self.reset()
+        
     def init(self, game):
         self.game = game
-
+        
     def reset(self):
         self.current_node = 0
-        return self.current_node
+        self.last_node = self.current_node
+        self.countupdates = 0 # count state transitions (for the score)
+        if (self.current_node in self.visits):
+            self.visits[self.current_node] += 1
+        else:
+            self.visits[self.current_node] = 1
 
-    def __len__(self):
-        return len(self.transitions)
-    
-    def encode_state(self, state):
-        encoded_state = np.zeros((self.__len__()))
-        encoded_state[state] = 1
-        return encoded_state
 
+    # check if a column is free (used by RA)
+    def check_free_cols(self, cols):
+        cond = True
+        for c in cols:
+            for j in range(0,self.game.brick_rows):
+                if (self.game.bricksgrid[c][j]==1):
+                    cond = False
+                    break
+        return cond
+
+    # RewardAutoma Transition
     def update(self):
-        
-        label = None
-        if self.game.hit_brick:
-            label = self.game.hit_brick.i
         reward = 0
-        done = False
-        # Check Label transitions the StateMachine
+        state_changed = False
 
-        if self.acceptances[self.current_node][label]:
-            reward = 10
+        # RA disabled
+        if (self.brick_cols==0):
+            return (reward, state_changed)
+            
+        for b in self.game.last_brikcsremoved:
+            if b.i == self.current_node:
+                reward += self.STATES['GoodBrick']
+                #print 'Hit right brick for next RA state'
+            else:
+                reward += self.STATES['WrongBrick']
+                #print 'Hit wrong brick for next RA state'
 
-        new_state = self.transitions[self.current_node][label]
-        state_change = new_state != self.current_node
-        self.current_node = new_state
-                
-        return reward, state_change
-    
+        f = np.zeros(self.brick_cols)
+        for c in range(0,self.brick_cols):
+            f[c] = self.check_free_cols([c])  # vector of free columns
+
+        if (self.current_node<self.brick_cols): # 0 ... brick_cols
+            if self.type == "left2right":
+                goal_column = self.current_node
+                cbegin = goal_column + 1
+                cend = self.brick_cols
+                cinc = 1
+            elif self.type == "left2rightx2":
+                goal_column = self.current_node
+                cbegin = goal_column + 1
+                cend = self.brick_cols
+                cinc = 2
+            elif self.type == "right2left":
+                goal_column = self.brick_cols - self.current_node - 1
+                cbegin = goal_column - 1
+                cend = -1
+                cinc = -1
+            else:
+                raise(f"Type {self.type} not implemented.")
+
+            if f[goal_column]:
+                state_changed = True
+                self.countupdates += 1
+                self.last_node = self.current_node
+                self.current_node += 1
+                reward += self.STATES['RAGoal'] * self.countupdates / self.brick_cols
+                #print("  -- RA state transition to %d, " %(self.current_node))
+                if (self.current_node==self.RAGoal):
+                    # print("  <<< RA GOAL >>>")
+                    reward += self.STATES['RAGoal']
+                    self.goalreached += 1
+            else:
+                for c in range(cbegin, cend, cinc):
+                    if f[c]:
+                        self.last_node = self.current_node
+                        self.current_node = self.RAFail  # FAIL
+                        reward += self.STATES['RAFail']
+                        #print("  *** RA FAIL *** ")
+                        break
+
+        elif (self.current_node==self.RAGoal): #  GOAL
+            pass
+
+        elif (self.current_node==self.RAFail): #  FAIL
+            pass
+
+        if (state_changed):
+            if (self.current_node in self.visits):
+                self.visits[self.current_node] += 1
+            else:
+                self.visits[self.current_node] = 1
+
+            if (self.current_node != self.RAFail):
+                #print "Success for last_node ",self.last_node
+                if (self.last_node in self.success):
+                    self.success[self.last_node] += 1
+                else:
+                    self.success[self.last_node] = 1
+
+
+        return (reward, state_changed)
+
+    def current_successrate(self):
+        s = 0.0
+        v = 1.0
+        if (self.current_node in self.success):
+            s = float(self.success[self.current_node])
+        if (self.current_node in self.visits):
+            v = float(self.visits[self.current_node])
+        #print "   -- success rate: ",s," / ",v
+        return s/v
+
     def print_successrate(self):
-        pass
+        r = []
+        for i in range(len(self.success)):
+            r.append(float(self.success[i])/self.visits[i])
+        print('RA success: %s' %str(r))
 
 
 
@@ -374,10 +313,9 @@ class BreakoutSRA(BreakoutS):
 
 
 
-class BreakoutNRA(BreakoutN): #N-A
+class BreakoutNRA(BreakoutN):
 
-    def __init__(self, brick_rows=3, brick_cols=3, 
-                 trainsessionname='test', RAenabled=True):
+    def __init__(self, brick_rows=3, brick_cols=3, trainsessionname='test', RAenabled=True):
         BreakoutN.__init__(self,brick_rows, brick_cols, trainsessionname)
         RA_cols = 0
         if (RAenabled):
@@ -394,13 +332,15 @@ class BreakoutNRA(BreakoutN): #N-A
             'Scores':0,    # brick removed
             'Hit':0,       # paddle hit
             'Goal':0,      # level completed
-            'ColRemoved': 0
         }
+
+        self.logger = Logger(
+            logdir="runs", 
+            run_name=f"{trainsessionname}")
 
 
     def savedata(self):
-        return [self.iteration, self.hiscore, self.hireward, self.elapsedtime, self.RA.visits, 
-        self.RA.success, self.agent.SA_failure, random.getstate(),np.random.get_state()]
+        return [self.iteration, self.hiscore, self.hireward, self.elapsedtime, self.RA.visits, self.RA.success, self.agent.SA_failure, random.getstate(),np.random.get_state()]
 
          
     def loaddata(self,data):
@@ -424,12 +364,9 @@ class BreakoutNRA(BreakoutN): #N-A
         print('Number of states: %d' %self.nstates)
         print('Number of actions: %d' %self.nactions)
 
-
     def getstate(self):
-        state = super(BreakoutNRA, self).getstate()
-        # state[-1] = self.RA.current_node
-        # return state
-        return state + (self.n_ball_x*self.n_ball_y*self.n_ball_dir*self.n_paddle_x) * self.RA.current_node
+        x = super(BreakoutNRA, self).getstate()
+        return x + (self.n_ball_x*self.n_ball_y*self.n_ball_dir*self.n_paddle_x) * self.RA.current_node
 
     def reset(self):
         super(BreakoutNRA, self).reset()
@@ -456,8 +393,7 @@ class BreakoutNRA(BreakoutN): #N-A
         if (self.current_reward>0 and self.RA.current_node==self.RA.RAFail):  # FAIL RA state
             r = 0
         self.cumreward += self.gamman * r
-        if self.agent:
-            self.gamman *= self.agent.gamma
+        self.gamman *= self.agent.gamma
 
         #if (r<0):
         #    print("Neg reward: %.1f" %r)
@@ -474,6 +410,7 @@ class BreakoutNRA(BreakoutN): #N-A
         if (RAnode==self.RA.RAFail):
             RAnode = self.RA.last_node
 
+        self.logger.log_episode(self.iteration, self.cumreward, {}, self.elapsedtime, 0)
             
         s = 'Iter %6d, b_hit: %3d, p_hit: %3d, na: %4d, r: %5d, RA: %d, mem: %d/%d  %c' %(self.iteration, self.score, self.paddle_hit_count,self.numactions, self.cumreward, RAnode, len(self.agent.Q), len(self.agent.SA_failure), ch)
 

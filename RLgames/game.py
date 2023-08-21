@@ -30,7 +30,6 @@ GAMES = {
     'BreakoutFS':  [ "importlib.import_module('Breakout').BreakoutS", 
                      "game.fire_enabled = True" ],
     'BreakoutN':   [ "importlib.import_module('Breakout').BreakoutN", None ],
-    'BreakoutA':   [ "importlib.import_module('Breakout').BreakoutA", None ],
 
     'BreakoutSRA':   [ "importlib.import_module('BreakoutRA').BreakoutSRA", None ],
     'BreakoutSRAO':   [ "importlib.import_module('BreakoutRA').BreakoutSRA", 
@@ -126,15 +125,15 @@ def loadGameModule(args, trainname):
     print("Loading game %s" %args.env.name)
     try:
         # default sizes
+        rows=None; cols=None
         if 'sapientino' in args.env.name:
-            args.env.rows = 5 
-            args.env.cols = 7
-            name = "Sapientino2"
+            rows = 5 
+            cols = 7
+            name = 'Sapientino3C'
         elif 'Minecraft' in args.env.name:
-            args.env.rows = 10 
-            args.env.cols = 10
-            name = 'Minecraft'
-        game = eval(GAMES[name][0])(args.env.rows, args.env.cols, trainname)
+            rows = 10 
+            cols = 10
+        game = eval(GAMES[name][0])(rows, cols, trainname)
         if GAMES[name][1] is not None:
             exec(GAMES[name][1])
 
@@ -162,7 +161,7 @@ def loadGameModule(args, trainname):
             print("ERROR: game %s not found." %args.game)
             sys.exit(1)
     except:
-        print("ERROR: game %s not found." %args.env.name)
+        print("ERROR: game %s not found." %args.game)
         raise
         sys.exit(1)
     return game
@@ -172,7 +171,7 @@ def loadGameModule(args, trainname):
 AGENTS = {
 
     'Q': [ "importlib.import_module('RLAgent').QAgent", None ],
-    'TabularSarsa': [ "importlib.import_module('RLAgent').SarsaAgent", None ],
+    'Tabular_Sarsa': [ "importlib.import_module('RLAgent').SarsaAgent", None ],
     'SarsaLin': [ "importlib.import_module('RLAgent').SarsaAgent", 
                   "agent.Qapproximation = True" ],
     'MC': [ "importlib.import_module('RLMCAgent').MCAgent", None ],
@@ -181,7 +180,7 @@ AGENTS = {
 
 
 def loadAgentModule(args):
-    print("Loading agent "+ args.agent.name)
+    print("Loading agent "+args.agent.name)
     try:
         agent = eval(AGENTS[args.agent.name][0])()
         if AGENTS[args.agent.name][1] is not None:
@@ -242,7 +241,7 @@ def writeinfo(args, trainname, game, agent, init=True, optimalPolicyFound=False)
         infofile.write("alpha:   %f\n" %(agent.alpha))
         infofile.write("n-step:  %d\n" %(agent.nstepsupdates))
         infofile.write("lambda:  %f\n\n" %(agent.lambdae))
-        infofile.write("\n%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%.3f\n" %(strtime,trainname,args.env.name,args.env.rows,args.env.cols,agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
+        infofile.write("\n%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%.3f\n" %(strtime,trainname,args.env.name,args.env.rows, args.env.cols, agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
         #allinfofile.write("%s,%s,%s,%d,%d,%s,%.3f,%.3f,%.3f,%d,%f\n" %(strtime,trainname,args.game,args.rows,args.cols,agent.name,agent.gamma,agent.epsilon,agent.alpha,agent.nstepsupdates,agent.lambdae))
     else:
         infofile.write("iteration:        %d\n" %(game.iteration))
@@ -275,28 +274,12 @@ def handler(signum, frame):
     userquit = True
 
 
-
-def key_pressed(key):
-    for event in pygame.event.get(): 
-        if event.type == pygame.KEYDOWN and event.key == key: 
-            return True
-    return False
-
-
 def execution_step(game, agent):
-    play=True
     x = game.getstate() # current state
     if (game.isAuto):  # agent choice
         a = agent.decision(x) # current action
     else: # otherwise command is set by user input
         a = game.getUserAction() # action selected by user
-    # print(a)
-
-    if key_pressed(pygame.K_n): play = False
-    while not play:
-        if key_pressed(pygame.K_n): play = True
-        if key_pressed(pygame.K_m): break
-
     game.update(a)
     x2 = game.getstate() # new state
     r = game.getreward() # reward
@@ -324,19 +307,18 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
     #    next_optimal = True
     #    game.iteration -= 1
 
-    
-    mean_reward = []
-    episode = 0
     steps = 0
-    while (run and (args.agent.niter<0 or game.iteration<=args.agent.niter)):
+    episodes = 0
+    reward_list = []
+    while (run and (args.niter<0 or game.iteration<=args.niter)):
         game.reset() # increment game.iteration
         game.draw()
         time.sleep(game.sleeptime)
+
+        ep_steps = 0
         if ((last_goalreached and agent.gamma==1) or next_optimal):
             agent.optimal = True
             next_optimal = False
-        
-        ep_steps = 0
         while (run and not game.finished):
             grun = game.input()
             if (not grun):
@@ -354,24 +336,11 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
             game.draw()
             time.sleep(game.sleeptime)
 
-            steps+=1
-            ep_steps+=1
-
-            # logger.log_data(
-            #             steps, game.current_reward, 0, 
-            #             0, 0, 0.1)
-
         # episode finished
         if (game.finished):
             agent.notify_endofepisode(game.iteration)
             game.elapsedtime = (time.time() - exstart) + elapsedtime0
             game.print_report()
-
-            mean_reward += [game.cumreward]
-            mean_reward = np.mean(mean_reward[-100:])
-            episode += 1
-            logger.log_episode(
-                    steps, ep_steps, episode, game.cumreward, mean_reward, 0.1)
             time.sleep(game.sleeptime)
 
         # end of experiment
@@ -389,6 +358,16 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
             run = False
 
         last_goalreached = game.goal_reached()
+
+        steps+=1
+        ep_steps+=1
+
+    reward_list += [game.cumreward]
+    mean_reward = np.mean(reward_list[-100:])
+    episodes += 1
+
+    if logger:
+        logger.log_episode(steps, ep_steps, episodes, game.cumreward, mean_reward, 0)
 
     if optimalPolicyFound:
         print("\n***************************")

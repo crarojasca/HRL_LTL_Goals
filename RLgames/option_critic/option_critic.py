@@ -125,7 +125,6 @@ class OptionCriticConv(nn.Module):
     def epsilon(self):
         if not self.testing:
             eps = self.eps_min + (self.eps_start - self.eps_min) * exp(-self.num_steps / self.eps_decay)
-            # eps = self.eps_min
             self.num_steps += 1
         else:
             eps = self.eps_test
@@ -160,29 +159,23 @@ class OptionCriticFeatures(nn.Module):
         self.eps_test  = eps_test
         self.num_steps = 0
         
-
-        # input_dim = in_features
-        # self.features = lambda x: x
-
-        input_dim = 64
         self.features = nn.Sequential(
             nn.Linear(in_features, 32),
             nn.ReLU(),
-            nn.Linear(32, input_dim),
+            nn.Linear(32, 64),
             nn.ReLU()
         )
-        
 
-        self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
-        self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
-        self.options_W = nn.Parameter(torch.zeros(num_options, input_dim, num_actions))
+        self.Q            = nn.Linear(64, num_options)                 # Policy-Over-Options
+        self.terminations = nn.Linear(64, num_options)                 # Option-Termination
+        self.options_W = nn.Parameter(torch.zeros(num_options, 64, num_actions))
         self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
 
         self.to(device)
         self.train(not testing)
 
     def get_state(self, obs):
-        if obs.ndim < 2:
+        if obs.ndim < 4:
             obs = obs.unsqueeze(0)
         obs = obs.to(self.device)
         state = self.features(obs)
@@ -238,15 +231,15 @@ def critic_loss_fn(model, model_prime, data_batch, args):
     masks     = 1 - torch.FloatTensor(dones).to(model.device)
 
     # The loss is the TD loss of Q and the update target, so we need to calculate Q
-    states = model.get_state(to_tensor(obs).reshape(-1, 1)).squeeze(0)
+    states = model.get_state(to_tensor(obs)).squeeze(0)
     Q      = model.get_Q(states)
     
     # the update target contains Q_next, but for stable learning we use prime network for this
-    next_states_prime = model_prime.get_state(to_tensor(next_obs).reshape(-1, 1)).squeeze(0)
+    next_states_prime = model_prime.get_state(to_tensor(next_obs)).squeeze(0)
     next_Q_prime      = model_prime.get_Q(next_states_prime) # detach?
 
     # Additionally, we need the beta probabilities of the next state
-    next_states            = model.get_state(to_tensor(next_obs).reshape(-1, 1)).squeeze(0)
+    next_states            = model.get_state(to_tensor(next_obs)).squeeze(0)
     next_termination_probs = model.get_terminations(next_states).detach()
     next_options_term_prob = next_termination_probs[batch_idx, options]
 
@@ -285,7 +278,7 @@ def actor_loss_fn(obs, option, logp, entropy, reward, done, next_obs, model, mod
     
 class Agent:
 
-    def __init__(self, args) -> None:
+    def __init__(self, args, max_episodes) -> None:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
 
@@ -295,7 +288,7 @@ class Agent:
         device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 
         self.option_critic = option_critic(
-            in_features=args.stateSpace,
+            in_features=1,
             num_actions=3,
             num_options=args.num_options,
             temperature=args.temp,
@@ -330,9 +323,7 @@ class Agent:
 
         self.update_frequency = args.update_frequency
 
-        self.max_episodes = args.max_episodes
-
-        self.gamma = 1
+        self.max_episodes = max_episodes
 
     def init(self, nstates, nactions):
         pass
@@ -356,7 +347,6 @@ class Agent:
 
         steps = 0
         episodes = 0
-        reward_list=[]
         # if args.switch_goal: print(f"Current goal {env.cumreward}")
         # while steps < self.max_steps_total:
         while episodes < self.max_episodes:
@@ -365,8 +355,8 @@ class Agent:
 
             
             env.reset()
-            if env.gui_visible: env.draw()
-            obs   = env.getstate()
+            env.draw()
+            obs   = [env.getstate()]
             state = self.option_critic.get_state(to_tensor(obs))
             greedy_option  = self.option_critic.greedy_option(state)
             current_option = 0
@@ -412,11 +402,10 @@ class Agent:
                 action, logp, entropy, probs = self.option_critic.get_action(state, current_option)
 
                 env.update(action)
-                if env.gui_visible: env.draw()
-                next_obs = env.getstate()
+                next_obs = [env.getstate()]
                 reward = env.getreward()
                 done = env.finished
-                # env.draw()
+                env.draw()
                 # next_obs, reward, done, _ = env.step(action)
                 self.buffer.push(obs, current_option, reward, next_obs, done)
                 rewards += reward
@@ -454,7 +443,5 @@ class Agent:
                 self.logger.log_data(
                     steps, rewards, actor_loss, critic_loss, entropy.item(), epsilon, action, probs)
 
-            reward_list += [rewards]
-            mean_reward = np.mean(reward_list[-100:])
             episodes += 1
-            self.logger.log_episode(episodes, rewards, mean_reward, option_lengths, ep_steps, epsilon)
+            self.logger.log_episode(episodes, rewards, option_lengths, ep_steps, epsilon)

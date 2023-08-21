@@ -70,7 +70,7 @@ class Breakout(object):
         self.STATES = {
             'Init':0,
             'Alive':0,
-            'Dead':-10,
+            'Dead':0,
             'PaddleNotMoving':0,
             'Scores':10,    # brick removed
             'Hit':0,        # paddle hit
@@ -130,7 +130,8 @@ class Breakout(object):
         self.se_wall = None
         self.se_paddle = None
 
-        pygame.key.set_repeat(10)
+        if (not self.gui_visible):
+            pygame.display.iconify()
 
         
         
@@ -189,7 +190,6 @@ class Breakout(object):
         self.paddle_x = self.win_width/2
         self.paddle_y = self.win_height-20
         self.paddle_speed = 10 # same as resolution
-        self.paddle_move = 0
         #self.paddle_vec = 0
         self.com_vec = 0
 
@@ -211,7 +211,7 @@ class Breakout(object):
         self.numactions = 0 # number of actions in this run
         self.iteration += 1
 
-        # self.agent.optimal = self.optimalPolicyUser or (self.iteration%100)==0 # False #(random.random() < 0.5)  # choose greedy action selection for the entire episode
+        self.agent.optimal = self.optimalPolicyUser or (self.iteration%100)==0 # False #(random.random() < 0.5)  # choose greedy action selection for the entire episode
         
         self.initBricks()
 
@@ -219,8 +219,8 @@ class Breakout(object):
         self.fire_posx = 0
         self.fire_posy = 0
         self.fire_speedy = 0 # 0 = not firing, <0 firing up
-        
-        self.hit_brick = None
+
+
 
 
     def goal_reached(self):
@@ -252,14 +252,13 @@ class Breakout(object):
                 pass
             elif self.command == 1:  # moving left
                 self.paddle_x -= self.paddle_speed
-                if self.paddle_x < 0:
-                    self.paddle_x = 0
-                else:
-                    self.paddle_move = 0
             elif self.command == 2:  # moving right
                 self.paddle_x += self.paddle_speed                
-                if self.paddle_x > self.screen.get_width() - paddle_width:
-                    self.paddle_x = self.screen.get_width() - paddle_width
+
+            if self.paddle_x < 0:
+                self.paddle_x = 0
+            if self.paddle_x > self.screen.get_width() - paddle_width:
+                self.paddle_x = self.screen.get_width() - paddle_width
 
             if self.command == 3:  # fire
                 if (self.fire_speedy==0):
@@ -313,7 +312,7 @@ class Breakout(object):
             elif (random.uniform(0.0, 1.0) > 0.9):
                 self.ball_speed_x *= 1.5
             sign = self.ball_speed_x/abs(self.ball_speed_x)    
-            self.ball_speed_x = min(self.ball_speed_x, 6)*sign
+            self.ball_speed_x = min(self.ball_speed_x,6)*sign
             self.ball_speed_x = max(self.ball_speed_x,0.5)*sign
             #print("random ball_speed_x = %.2f" %self.ball_speed_x)
 
@@ -422,7 +421,6 @@ class Breakout(object):
                 
         #for bricks
         #hitbrick = False
-        self.hit_brick = None
         for brick in self.bricks:
             if brick.rect.colliderect(ball_rect):
                 #print 'brick hit ',brick.i,brick.j
@@ -438,7 +436,6 @@ class Breakout(object):
                 self.ball_speed_y = -self.ball_speed_y
                 self.current_reward += self.STATES['Scores']
                 self.paddle_hit_without_brick = 0
-                self.hit_brick = brick
                 #print("bricks left: %d" %len(self.bricks))
                 break
 
@@ -601,9 +598,9 @@ class Breakout(object):
         if self.isAuto is True:
             auto_label = self.myfont.render("Auto", 100, pygame.color.THECOLORS['red'])
             self.screen.blit(auto_label, (self.win_width-200, 10))
-        # if (self.agent.optimal):
-        #     opt_label = self.myfont.render("Best", 100, pygame.color.THECOLORS['red'])
-        #     self.screen.blit(opt_label, (self.win_width-100, 10))
+        if (self.agent.optimal):
+            opt_label = self.myfont.render("Best", 100, pygame.color.THECOLORS['red'])
+            self.screen.blit(opt_label, (self.win_width-100, 10))
             
         for brick in self.bricks:
             pygame.draw.rect(self.screen,grey,brick.rect,0)
@@ -630,64 +627,14 @@ class Breakout(object):
         print('ERROR: this function must be overwritten by subclasses')
         sys.exit(1)
 
-class BreakoutA(Breakout):
-    def __init__(self, brick_rows=3, brick_cols=3, trainsessionname='test'):
-        super().__init__(brick_rows, brick_cols, trainsessionname)
-        self.STATES = {
-            'Init':0,
-            'Alive':0,
-            'Dead':-10,
-            'PaddleNotMoving':0,
-            'Scores':1,    # brick removed
-            'Hit':0,       # paddle hit
-            'Goal':0,      # level completed
-            'ColRemoved': 10
-        }
-        self.nstates=None; self.nactions=None
-
-    def getStateSpace(self):
-        ball_pos_dim = 2
-        ball_speed_dim = 2
-        paddle_dim = 1
-        bricksgrid = self.brick_cols * self.brick_rows
-        RA = 1
-
-        state_space = ball_pos_dim + ball_speed_dim + paddle_dim + bricksgrid + RA
-
-        return state_space
-
-    def getstate(self):
-        ball_pos = [self.ball_x, self.ball_y]
-        ball_speed = [self.ball_speed_x, self.ball_speed_y]
-        paddle = [self.paddle_x]
-        bricksgrid = [
-            self.bricksgrid[i][j] for i in range(0, self.brick_cols) for j in range(0, self.brick_rows)]
-        state = ball_pos + ball_speed + paddle + bricksgrid + [0]
-        return state
-
-    def update(self, a):
-        super().update(a)
-        # print(self.current_reward)
-        if self.last_brikcsremoved:
-            c = self.last_brikcsremoved[-1].i
-            for j in range(0, self.brick_rows):
-                if (self.bricksgrid[c][j]==1):
-                    return
-            
-            self.current_reward+=self.STATES["ColRemoved"]
-
-
-    def setStateActionSpace(self):
-        pass
-
 
 #
 # Breakout with standard definition of states
 #
-class BreakoutN(BreakoutA):
+class BreakoutN(Breakout):
 
     def __init__(self, brick_rows=3, brick_cols=3, trainsessionname='test'):
-        BreakoutA.__init__(self,brick_rows, brick_cols, trainsessionname)        
+        Breakout.__init__(self,brick_rows, brick_cols, trainsessionname)
         
     def setStateActionSpace(self):
         self.n_ball_x = int(self.win_width/resolutionx)+1
@@ -737,7 +684,6 @@ class BreakoutN(BreakoutA):
         x = ball_x  + self.n_ball_x * ball_y + (self.n_ball_x*self.n_ball_y) * ball_dir + (self.n_ball_x*self.n_ball_y*self.n_ball_dir) * paddle_x
         
         return int(x)
-
 
 
 #

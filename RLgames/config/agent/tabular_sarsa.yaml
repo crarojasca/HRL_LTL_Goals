@@ -1,0 +1,20 @@
+name: Tabular_Sarsa
+
+seed: 42
+game: BreakoutNRA
+agent: Sarsa
+trainfile: Sarsa_5_OriginalRewards
+rows: 2
+cols: 5
+gamma: 0.999
+epsilon: 0.2
+alpha: -1
+lambdae: -1
+nstep: 100
+niter: 20000
+
+debug: False
+gui: True
+sound: False
+eval: False
+stopongoal: False

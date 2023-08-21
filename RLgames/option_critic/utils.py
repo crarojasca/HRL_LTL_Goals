@@ -36,6 +36,6 @@ class FrameStack(FrameStack_):
         return LazyFrames(list(self.frames))
 
 def to_tensor(obs):
-    obs = np.asarray([obs])
+    obs = np.asarray(obs)
     obs = torch.from_numpy(obs).float()
     return obs

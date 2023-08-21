@@ -10,7 +10,7 @@ class RLAgent(object):
 
     def __init__(self):
         self.command = 0
-        self.gamma = 0.999
+        self.gamma = 1.0
         self.epsilon = -1 #  -1: adaptive
         self.alpha = 0.5 # -1: adative
         self.nstepsupdates = 0 # n-steps updates 
@@ -147,8 +147,6 @@ class RLAgent(object):
         
     def incVisits(self, x, a):
         if (self.Qapproximation):
-            if not (x,a) in self.Visits:
-                self.Visits[x, a] = 0
             self.Visits[x,a] += 1
         elif self.sparse:
             self.setVisits(x,a,self.getVisits(x,a)+1)

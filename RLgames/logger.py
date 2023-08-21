@@ -12,7 +12,10 @@ import yaml
 class Logger():
     def __init__(self, cfg, run_name) -> None:
         self.cfg = cfg
-        self.log_name = os.path.join(cfg["logger"]["folder_path"], run_name)     
+        self.log_name = os.path.join(cfg["logger"]["folder_path"], run_name)    
+        self.enable_log_step = cfg["logger"]["log_step"]
+        self.enable_log_episode = cfg["logger"]["log_episode"]
+        self.enable_log_terminal = cfg["logger"]["log_terminal"]
 
         if not os.path.exists(self.log_name):
             os.makedirs(self.log_name)
@@ -35,8 +38,12 @@ class Logger():
         print("\nRUN: {}\n\nPARAMETERS:\n {}".format(self.log_name, parameters))
 
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
-        logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward} | episode_steps={ep_steps} "\
-            f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
+        if not self.enable_log_episode:
+            return
+        
+        if self.enable_log_terminal:
+            logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward:3d} | episode_steps={ep_steps:5d} "\
+                f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
         
     def close(self):
         pass
@@ -49,8 +56,10 @@ class TensorboardLogger(Logger):
         self.tf_writer = None
         self.start_time = time.time()
         self.writer = SummaryWriter(self.log_name)
-
+        
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
+        if not self.enable_log_episode:
+            return
         super().log_episode(steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths)
 
         self.writer.add_scalar(tag="episodic_rewards", scalar_value=reward, global_step=episode)
@@ -65,6 +74,8 @@ class TensorboardLogger(Logger):
                 self.writer.add_scalar(tag=f"option_{option}_active", scalar_value=sum(lens)/ep_steps, global_step=episode)
     
     def log_data(self, step, rewards, actor_loss, critic_loss, entropy, epsilon):
+        if not self.enable_log_step:
+            return
 
         if actor_loss:
             self.writer.add_scalar(tag="actor_loss", scalar_value=actor_loss.item(), global_step=step)
@@ -93,6 +104,9 @@ class WanDBLogger(Logger):
     
         
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
+        if not self.enable_log_episode:
+            return
+        
         super().log_episode(steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths)
 
         wandb.log({
@@ -108,6 +122,8 @@ class WanDBLogger(Logger):
                     })
                 
     def log_data(self, step, rewards, actor_loss, critic_loss, entropy, epsilon):
+        if not self.enable_log_step:
+            return
 
         if actor_loss:
             wandb.log({"actor_loss": actor_loss.item()})

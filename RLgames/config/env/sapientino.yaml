@@ -3,5 +3,6 @@ name: sapientino
 rows: 5
 cols: 7 
 ncol: 7
-nvisitpercol: 2
-render: False
+nvisitpercol: 3
+render: True
+type_state: "features" # integer - features - screen

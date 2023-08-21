@@ -1,8 +1,15 @@
-name: TabularSarsa
+name: Sarsa
 seed: 42
-gamma: 0.99
-epsilon: 0.1
-alpha: -1
-lambdae: 1
-nstep: 100
-niter: 5000
+batch_size: 64 
+gamma : 0.99
+temperature: 0.001
+epsilon_start: 0.9
+epsilon_min: 0.1
+epsilon_decay: 10000
+epsilon_test: 0
+learning_rate: 1e-4
+max_episodes: 5000
+max_steps_ep: 100
+freeze_interval: 200
+max_history: 10000
+testing: False

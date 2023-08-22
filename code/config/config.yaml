@@ -21,7 +21,7 @@ model:
 
 defaults:
   - env: sapientino
-  - agent: ppo
+  - agent: a2c
   - override hydra/launcher: joblib
   - _self_
 

@@ -42,7 +42,7 @@ class Logger():
             return
         
         if self.enable_log_terminal:
-            logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward:3d} | episode_steps={ep_steps:5d} "\
+            logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward:5d} | episode_steps={ep_steps:7d} "\
                 f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
         
     def close(self):

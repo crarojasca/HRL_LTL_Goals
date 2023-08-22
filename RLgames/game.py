@@ -315,7 +315,8 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
         game.draw()
         time.sleep(game.sleeptime)
 
-        ep_steps = 0
+        ep_steps=0
+        ep_reward = 0
         if ((last_goalreached and agent.gamma==1) or next_optimal):
             agent.optimal = True
             next_optimal = False
@@ -328,6 +329,7 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
                 continue
 
             fn_step(game, agent)
+            ep_reward += game.current_reward
 
             if (agent.error):
                 game.pause = True
@@ -335,6 +337,9 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
                 agent.error = False            
             game.draw()
             time.sleep(game.sleeptime)
+
+            steps+=1
+            ep_steps+=1
 
         # episode finished
         if (game.finished):
@@ -359,15 +364,15 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
 
         last_goalreached = game.goal_reached()
 
-        steps+=1
-        ep_steps+=1
 
-        reward_list += [game.cumreward]
+        reward_list += [ep_reward]
         mean_reward = np.mean(reward_list[-100:])
         episodes += 1
 
         if logger:
-            logger.log_episode(steps, ep_steps, episodes, game.cumreward, mean_reward, 0)
+            print(steps, ep_steps, episodes, ep_reward, mean_reward, 0)
+            logger.log_episode(steps=steps, ep_steps=ep_steps, episode=episodes, 
+                               reward=ep_reward, mean_reward=mean_reward, epsilon=0)
 
     if optimalPolicyFound:
         print("\n***************************")

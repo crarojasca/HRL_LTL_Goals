@@ -1,9 +1,7 @@
 name: Tabular_Sarsa
 
 seed: 42
-game: BreakoutNRA
 agent: Sarsa
-trainfile: Sarsa_5_OriginalRewards
 rows: 2
 cols: 5
 gamma: 0.999

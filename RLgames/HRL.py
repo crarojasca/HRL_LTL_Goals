@@ -108,8 +108,6 @@ def main(args : DictConfig) -> None:
     print('Game over')
     logger.close()
     game.quit()
-
-    
     print("FINISHED RUNNING")
 
 if __name__=="__main__":

@@ -362,12 +362,12 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
         steps+=1
         ep_steps+=1
 
-    reward_list += [game.cumreward]
-    mean_reward = np.mean(reward_list[-100:])
-    episodes += 1
+        reward_list += [game.cumreward]
+        mean_reward = np.mean(reward_list[-100:])
+        episodes += 1
 
-    if logger:
-        logger.log_episode(steps, ep_steps, episodes, game.cumreward, mean_reward, 0)
+        if logger:
+            logger.log_episode(steps, ep_steps, episodes, game.cumreward, mean_reward, 0)
 
     if optimalPolicyFound:
         print("\n***************************")

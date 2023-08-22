@@ -62,6 +62,9 @@ def main(args : DictConfig) -> None:
 
     run_name="{}_{}_{}".format(args.agent.name, args.env.name, args.experiment)
 
+    print(run_name)
+    print(args)
+
     parameters = OmegaConf.to_container(args, resolve=True)
     parameters["agent"]["device"] = "cpu"
 

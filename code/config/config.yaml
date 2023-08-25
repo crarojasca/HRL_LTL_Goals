@@ -8,7 +8,7 @@ hydra:
 experiment: 1
 note: null
 logger:
-  type: wandb
+  type: base
   folder_path: logs
   wandb_project: HRL
   log_step: False
@@ -21,7 +21,7 @@ model:
 
 defaults:
   - env: sapientino
-  - agent: a2c
+  - agent: oc
   - override hydra/launcher: joblib
   - _self_
 

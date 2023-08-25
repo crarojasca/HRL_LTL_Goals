@@ -18,23 +18,6 @@ from omegaconf import OmegaConf
 from .replay_memory import ReplayMemory
 
 
-# class ReplayBuffer(object):
-#     def __init__(self, capacity, seed=42):
-#         self.rng = random.SystemRandom(seed)
-#         self.buffer = deque(maxlen=capacity)
-
-#     def push(self, obs, option, reward, next_obs, done):
-#         self.buffer.append((obs, option, reward, next_obs, done))
-
-#     def sample(self, batch_size):
-#         obs, option, reward, next_obs, done = zip(*self.rng.sample(self.buffer, batch_size))
-#         return np.stack(obs), option, reward, np.stack(next_obs), done
-
-#     def __len__(self):
-#         return len(self.buffer)
-
-
-
 class Network(nn.Module):
     def __init__(self, in_features, num_actions, num_options, features_encoding="mlp", 
                  dims=[128, 64, 32], temperature=1.0, eps_start=1.0, eps_min=0.1, 
@@ -311,7 +294,7 @@ class OptionCritic:
 
         # Target update gt
         gt = reward + (1 - done) * args.gamma * \
-            ((1 - next_option_term_prob) * next_Q_prime[option]\
+            ((1 - next_option_term_prob) * next_Q_prime[option] \
               + next_option_term_prob  * next_Q_prime.max(dim=-1)[0])
 
         # The termination loss

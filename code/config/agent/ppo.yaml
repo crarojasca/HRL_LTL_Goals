@@ -1,7 +1,7 @@
 # Sapientino
 name: PPO
 
-seed: 42
+seed: null
 gamma: 0.99
 lr_actor: 0.0003 
 lr_critic: 0.001

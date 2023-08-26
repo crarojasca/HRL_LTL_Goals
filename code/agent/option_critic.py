@@ -70,8 +70,6 @@ class Network(nn.Module):
 
         self.Q            = nn.Linear(input_dim, num_options)                 # Policy-Over-Options
         self.terminations = nn.Linear(input_dim, num_options)                 # Option-Termination
-        # self.options_W = nn.Parameter(torch.zeros(num_options, dims[-1], num_actions))
-        # self.options_b = nn.Parameter(torch.zeros(num_options, num_actions))
         self.options = torch.nn.ModuleList(
             [
                 nn.Sequential(
@@ -177,8 +175,10 @@ class Network(nn.Module):
 class OptionCritic:
 
     def __init__(self, observation_space, action_space, args) -> None:
-        torch.manual_seed(args.seed)
-        np.random.seed(args.seed)
+
+        if args.seed:
+            torch.manual_seed(args.seed)
+            np.random.seed(args.seed)
 
         # Parameters
         self.args = args
@@ -189,7 +189,6 @@ class OptionCritic:
 
         # Device
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print(f"\nRunning on {device}.\n")
         self.device = torch.device(device)
         
         # Main Network
@@ -243,10 +242,7 @@ class OptionCritic:
             self.option_critic.load_state_dict(
                 checkpoint['model_params'])
 
-    # def to_tensor(self, obs):
-    #     obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
-    #     return obs
-    
+   
     def critic_loss_fn(self, model, model_prime, data_batch, args):
         obs, options, rewards, next_obs, dones = data_batch
         batch_idx = torch.arange(len(options)).long()

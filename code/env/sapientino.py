@@ -205,8 +205,9 @@ class Sapientino(object):
     def __init__(self, seed=42, rows=5, cols=7, name=None, trainsessionname='test', 
                  ncol=7, nvisitpercol=2, type_state="features", render=False):
 
-        random.seed(seed)
-        np.random.seed(seed)
+        if seed:
+            random.seed(seed)
+            np.random.seed(seed)
 
         self.isAuto = True
         self.gui_visible = render

@@ -49,8 +49,9 @@ class Logger():
         ## Episode File
         episode_file_path = os.path.join(self.log_name, 'episode.csv')  
         open(episode_file_path, 'w').close()
-        self.episode_file = writer(open(episode_file_path, 'a'))
-        self.episode_file.writerow(
+        self.episode_file = open(episode_file_path, 'a')
+        self.episode_log = writer(self.episode_file)
+        self.episode_log.writerow(
             ["steps", "ep_steps", "episode", "reward", "mean_reward", "epsilon", "option_lengths"]
         )
 
@@ -77,7 +78,7 @@ class Logger():
                 f"| Episode Steps={ep_steps:5d} "\
                 f"| Time={time:6s} | Epsilon={epsilon:.3f}")
                 
-        self.episode_file.writerow(
+        self.episode_log.writerow(
             [steps, ep_steps, episode, reward, mean_reward, epsilon, str(option_lengths)]
         )
         

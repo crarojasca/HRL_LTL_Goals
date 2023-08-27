@@ -1,14 +1,14 @@
 hydra:
   launcher:
-    n_jobs: 4
+    n_jobs: 5
   sweeper:
     params:
-      experiment: range(1, 20)
+      experiment: range(1, 10)
 
 experiment: 1
 note: null
 logger:
-  type: wandb
+  type: base
   folder_path: logs
   wandb_project: HRL
   log_step: False

@@ -1,24 +1,37 @@
 import os
-import time
+import json
+import yaml
+import wandb
 import logging
 import numpy as np
+
+from csv import writer
+from datetime import datetime
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.tensorboard import SummaryWriter
-
-import wandb
-import yaml
 
 
 class Logger():
     def __init__(self, cfg, run_name) -> None:
+
         self.cfg = cfg
+
+        # Time run starts
+        self.start_time = datetime.now()   
+
+        # Config parameters
         self.log_name = os.path.join(cfg["logger"]["folder_path"], run_name)    
         self.enable_log_step = cfg["logger"]["log_step"]
         self.enable_log_episode = cfg["logger"]["log_episode"]
         self.enable_log_terminal = cfg["logger"]["log_terminal"]
+       
+        # Create log folder
+        if not os.path.exists(self.log_name): os.makedirs(self.log_name)
 
-        if not os.path.exists(self.log_name):
-            os.makedirs(self.log_name)
+        # Save run config
+        config_file_path = os.path.join(self.log_name, 'config.json')  
+        with open(config_file_path, 'w') as file: 
+            json.dump(cfg, file, sort_keys=True, indent=4)
 
         logging.basicConfig(
             level=logging.DEBUG,
@@ -32,21 +45,46 @@ class Logger():
 
         self.print_config()
 
+        # Set Files
+        ## Episode File
+        episode_file_path = os.path.join(self.log_name, 'episode.csv')  
+        open(episode_file_path, 'w').close()
+        self.episode_file = open(episode_file_path, 'a')
+        self.episode_log = writer(self.episode_file)
+        self.episode_log.writerow(
+            ["steps", "ep_steps", "episode", "reward", "mean_reward", "epsilon", "option_lengths"]
+        )
+
         
     def print_config(self):
+
         parameters = yaml.dump(self.cfg)
         print("\nRUN: {}\n\nPARAMETERS:\n {}".format(self.log_name, parameters))
 
+    def log_data(self, step, rewards, actor_loss, critic_loss, entropy, epsilon):
+
+        if not self.enable_log_step:
+            return
+
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
+
         if not self.enable_log_episode:
             return
         
         if self.enable_log_terminal:
-            logging.info(f"> ep {episode} done. total_steps={steps} | reward={reward:5d} | episode_steps={ep_steps:7d} "\
-                f"| hours={(time.time()-self.start_time) / 60 / 60:.3f} | epsilon={epsilon:.3f}")
+            time = str(datetime.now()-self.start_time)
+            logging.info(
+                f"Episode: {episode:5d} | Steps: {steps:7d} | Reward={reward:5d} "\
+                f"| Episode Steps={ep_steps:5d} "\
+                f"| Time={time:6s} | Epsilon={epsilon:.3f}")
+                
+        self.episode_log.writerow(
+            [steps, ep_steps, episode, reward, mean_reward, epsilon, str(option_lengths)]
+        )
         
     def close(self):
-        pass
+
+        self.episode_file.close()
 
 
 class TensorboardLogger(Logger):
@@ -54,10 +92,10 @@ class TensorboardLogger(Logger):
         super().__init__(cfg, run_name)
 
         self.tf_writer = None
-        self.start_time = time.time()
         self.writer = SummaryWriter(self.log_name)
         
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
+
         if not self.enable_log_episode:
             return
         super().log_episode(steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths)
@@ -74,6 +112,7 @@ class TensorboardLogger(Logger):
                 self.writer.add_scalar(tag=f"option_{option}_active", scalar_value=sum(lens)/ep_steps, global_step=episode)
     
     def log_data(self, step, rewards, actor_loss, critic_loss, entropy, epsilon):
+
         if not self.enable_log_step:
             return
 
@@ -89,9 +128,8 @@ class TensorboardLogger(Logger):
 class WanDBLogger(Logger):
 
     def __init__(self, cfg, run_name):
-        super().__init__(cfg, run_name)
 
-        self.start_time = time.time()
+        super().__init__(cfg, run_name)
 
         # start a new wandb run to track this script
         wandb.init(
@@ -104,6 +142,7 @@ class WanDBLogger(Logger):
     
         
     def log_episode(self, steps, ep_steps, episode, reward, mean_reward, epsilon, option_lengths=None):
+
         if not self.enable_log_episode:
             return
         
@@ -122,6 +161,7 @@ class WanDBLogger(Logger):
                     })
                 
     def log_data(self, step, rewards, actor_loss, critic_loss, entropy, epsilon):
+
         if not self.enable_log_step:
             return
 
@@ -134,4 +174,6 @@ class WanDBLogger(Logger):
 
 
     def close(self):
+
+        super().close()
         wandb.finish()

@@ -20,6 +20,9 @@ class ReplayMemory(object):
         transitions = [np.array(value) for value in zip(*transitions)]
         batch = self.transition(*transitions)
         return batch
+    
+    def clear(self):
+        self.memory.clear()
 
     def __len__(self):
         return len(self.memory)

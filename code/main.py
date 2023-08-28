@@ -46,7 +46,7 @@ def fourrooms_transfer_experiment(env, agent, logger, cfg, run_name):
     # Update Goal
     env.spec.end_state = 2
     # Clear Buffer
-    agent.buffer.buffer.clear()
+    agent.buffer.clear()
     # Set New Number of Max Episodes
     agent.max_episodes = cfg.agent.max_episodes*2
     # Run
@@ -56,7 +56,7 @@ def fourrooms_transfer_experiment(env, agent, logger, cfg, run_name):
     print("Third Stage")
     env.spec.end_state = 3
     # Clear Buffer
-    agent.buffer.buffer.clear()
+    agent.buffer.clear()
     # Set New Number of Max Episodes
     agent.max_episodes = cfg.agent.max_episodes*3
     # Run

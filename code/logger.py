@@ -47,13 +47,12 @@ class Logger():
 
         # Set Files
         ## Episode File
-        episode_file_path = os.path.join(self.log_name, 'episode.csv')  
-        open(episode_file_path, 'w').close()
-        self.episode_file = open(episode_file_path, 'a')
-        self.episode_log = writer(self.episode_file)
-        self.episode_log.writerow(
-            ["steps", "ep_steps", "episode", "reward", "mean_reward", "epsilon", "option_lengths"]
-        )
+        self.episode_file_path = os.path.join(self.log_name, 'episode.csv')  
+        with open(self.episode_file_path, 'w') as file:
+            episode_log = writer(file)
+            episode_log.writerow(
+                ["steps", "ep_steps", "episode", "reward", "mean_reward", "epsilon", "option_lengths"]
+            )
 
         
     def print_config(self):
@@ -77,14 +76,16 @@ class Logger():
                 f"Episode: {episode:5d} | Steps: {steps:7d} | Reward={reward:5d} "\
                 f"| Episode Steps={ep_steps:5d} "\
                 f"| Time={time:6s} | Epsilon={epsilon:.3f}")
-                
-        self.episode_log.writerow(
-            [steps, ep_steps, episode, reward, mean_reward, epsilon, str(option_lengths)]
-        )
+            
+        with open(self.episode_file_path, 'a') as file:
+            episode_log = writer(file) 
+            episode_log.writerow(
+                [steps, ep_steps, episode, reward, mean_reward, epsilon, str(option_lengths)]
+            )
         
     def close(self):
-
-        self.episode_file.close()
+        pass
+        
 
 
 class TensorboardLogger(Logger):

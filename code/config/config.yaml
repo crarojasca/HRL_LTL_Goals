@@ -7,6 +7,7 @@ hydra:
 
 experiment: 1
 note: null
+replicate_experiment: fourrooms_transfer_experiment
 logger:
   type: base
   folder_path: logs
@@ -20,7 +21,7 @@ model:
   load_model: null
 
 defaults:
-  - env: sapientino
+  - env: fourrooms
   - agent: oc
   - override hydra/launcher: joblib
   - _self_

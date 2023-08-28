@@ -35,11 +35,12 @@ envs = {
     "sapientino": Sapientino
 }
 
-def fourrroms_experiment(env, agent, logger, cfg):
+def fourrooms_transfer_experiment(env, agent, logger, cfg, run_name):
     # Train
     print("First Stage")
     env.spec.end_state = 1
     agent.run(env, logger)
+    agent.save(cfg, run_name+"_FirstStage")
 
     print("Second Stage")
     # Update Goal
@@ -50,6 +51,7 @@ def fourrroms_experiment(env, agent, logger, cfg):
     agent.max_episodes = cfg.agent.max_episodes*2
     # Run
     agent.run(env, logger)
+    agent.save(cfg, run_name+"_SecondStage")
 
     print("Third Stage")
     env.spec.end_state = 3
@@ -59,6 +61,7 @@ def fourrroms_experiment(env, agent, logger, cfg):
     agent.max_episodes = cfg.agent.max_episodes*3
     # Run
     agent.run(env, logger)
+    agent.save(cfg, run_name+"_ThirdStage")
 
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(cfg : DictConfig) -> None: 
@@ -92,13 +95,16 @@ def main(cfg : DictConfig) -> None:
         parameters, run_name
     )
 
-    # Load  pretrained model if set
-    # agent.load(cfg)
+    if cfg.replicate_experiment=="fourrooms_transfer_experiment":
+        fourrooms_transfer_experiment(env, agent, logger, cfg, run_name)
+    else:       
+        # Load  pretrained model if set
+        # agent.load(cfg)
 
-    agent.run(env, logger)
+        agent.run(env, logger)
 
-    # Save Model
-    # agent.save(cfg, run_name)
+        # Save Model
+        # agent.save(cfg, run_name)
 
     logger.close()
     print("FINISHED RUNNING")

@@ -1,13 +1,13 @@
 hydra:
   launcher:
-    n_jobs: 4
+    n_jobs: 5
   sweeper:
     params:
-      experiment: range(1, 10)
+      experiment: range(1, 11)
 
 experiment: 1
 note: null
-replicate_experiment: fourrooms_transfer_experiment
+replicate_experiment: null
 logger:
   type: base
   folder_path: logs
@@ -21,7 +21,7 @@ model:
   load_model: null
 
 defaults:
-  - env: fourrooms
+  - env: breakout
   - agent: oc
   - override hydra/launcher: joblib
   - _self_

@@ -9,8 +9,8 @@ update_frequency: 1
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 20000
-max_steps_ep: 350 
+max_episodes: 1500
+max_steps_ep: 2000 
 
 network:
   features_encoding: mlp
@@ -22,7 +22,7 @@ network:
 epsilon:
   start: 0.9
   min: 0.1
-  decay: 800000
+  decay: 1000
   optimal: 0.05 
 
 replay_memory:

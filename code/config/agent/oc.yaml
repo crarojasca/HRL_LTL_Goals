@@ -4,16 +4,16 @@ name: OC
 seed: null
 temp: 1
 gamma: 0.99
-num_options: 8
+num_options: 4
 update_frequency: 1
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 3000
+max_episodes: 500
 max_steps_ep: 2000 
 
 network:
-  features_encoding: mlp
+  features_encoding: null
   dimensions:
     - 512
     - 256
@@ -22,7 +22,7 @@ network:
 epsilon:
   start: 0.9
   min: 0.1
-  decay: 10000
+  decay: 1000
   optimal: 0.05 
 
 replay_memory:

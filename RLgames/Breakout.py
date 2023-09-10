@@ -111,6 +111,7 @@ class Breakout(object):
         self.hiscore = 0
         self.hireward = -1000000
         self.vscores = []
+        os.system(f"mkdir data/{self.trainsessionname}/")
         self.resfile = open(f"data/{self.trainsessionname}/" + "dat","a+")
         self.elapsedtime = 0 # elapsed time for this experiment
 

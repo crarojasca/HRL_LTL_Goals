@@ -5,7 +5,7 @@ hydra:
     params:
       experiment: range(1, 11)
 
-experiment: 1
+experiment: test
 note: null
 logger:
   type: base
@@ -20,7 +20,7 @@ model:
   load_model: null
 
 defaults:
-  - env: sapientino
+  - env: breakout
   - agent: tabular_sarsa
   - override hydra/launcher: joblib
   - _self_

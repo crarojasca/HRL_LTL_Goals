@@ -133,8 +133,12 @@ def loadGameModule(args, trainname):
         elif 'Minecraft' in args.env.name:
             rows = 10 
             cols = 10
+        elif 'breakout' in args.env.name:
+            name = "BreakoutNRA"
+            rows = args.env.brick_rows
+            cols = args.env.brick_cols
         game = eval(GAMES[name][0])(rows, cols, trainname)
-        if GAMES[name][1] is not None:
+        if GAMES[name][1] is not None:  
             exec(GAMES[name][1])
 
         if True:
@@ -161,7 +165,7 @@ def loadGameModule(args, trainname):
             print("ERROR: game %s not found." %args.game)
             sys.exit(1)
     except:
-        print("ERROR: game %s not found." %args.game)
+        print("ERROR: game %s not found." %name)
         raise
         sys.exit(1)
     return game
@@ -371,8 +375,8 @@ def learn(args, game, agent, logger, maxtime=-1, stopongoal=False, fn_step=execu
 
         if logger:
             print(steps, ep_steps, episodes, ep_reward, mean_reward, 0)
-            logger.log_episode(steps=steps, ep_steps=ep_steps, episode=episodes, 
-                               reward=ep_reward, mean_reward=mean_reward, epsilon=0)
+            logger.log_episode(steps=steps, ep_steps=ep_steps, episode=int(episodes), 
+                               reward=int(ep_reward), mean_reward=mean_reward, epsilon=0)
 
     if optimalPolicyFound:
         print("\n***************************")

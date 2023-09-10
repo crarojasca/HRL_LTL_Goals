@@ -1,4 +1,6 @@
+import os
 import numpy as np
+from omegaconf import OmegaConf
 from .replay_memory import ReplayMemory
 
 import torch as T
@@ -16,15 +18,6 @@ class NN(nn.Module):
 
         self.observation_space = observation_space
         self.features_encoding = features_encoding
-
-        # self.base_layers = nn.Sequential(
-        #     nn.Linear(observation_space, 32),
-        #     nn.ReLU(),
-        #     nn.Linear(32, 64),
-        #     nn.ReLU()
-        # )
-        # self.policy = nn.Linear(64, n_actions)
-        # self.value = nn.Linear(64, 1)
 
         if not self.features_encoding:
             self.features = lambda x: x
@@ -96,7 +89,7 @@ class ActorCritic():
         self.log_probs = []
 
         # Replay Memory
-        self.memory = ReplayMemory(
+        self.buffer = ReplayMemory(
             args.replay_memory.max_history,
             values=('obs', 'logp', 'next_obs', 'reward', "done"), seed=42)
         
@@ -110,7 +103,9 @@ class ActorCritic():
         self.target_network.load_state_dict(self.network.state_dict())
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate)
 
-        self.number_parameters = sum(p.numel() for p in self.network.parameters())        
+        self.number_parameters = sum(p.numel() for p in self.network.parameters())  
+
+        self.episodes = 0      
 
     def get_actor_loss(self, obs, logp, reward, next_obs, done):
         # Get Critic Values
@@ -137,14 +132,29 @@ class ActorCritic():
         critic_loss = F.mse_loss(delta, Q)
 
         return critic_loss
+    
+    def save(self, conf, name):
+        hyperparameters = OmegaConf.to_container(conf, resolve=True)
+        T.save(
+            {
+                'model_params': self.network.state_dict(),
+                'hyperparameters': hyperparameters
+            }, os.path.join(conf.model.path, name)
+        )
+
+    def load(self, conf):
+        if conf.model.load_model:
+            checkpoint = T.load(
+                os.path.join(conf.model.path, conf.model.load_model))
+            self.network.load_state_dict(
+                checkpoint['model_params'])
 
     def run(self, env, logger=None):
 
         steps = 0
-        episodes = 0
         reward_list=[]
 
-        while episodes < self.max_episodes:
+        while self.episodes < self.max_episodes:
 
             ep_reward = 0
 
@@ -161,7 +171,7 @@ class ActorCritic():
                 next_obs, reward, done, truncated, info = env.step(action.item())
         
                 # Store transition in buffer
-                self.memory.push(
+                self.buffer.push(
                     obs, logp.cpu().detach().numpy(), reward, next_obs, done)
                 
                 # Optimize the main network
@@ -171,7 +181,7 @@ class ActorCritic():
                 
                 actor_loss=None; critic_loss=None
                 # Cast the variables
-                if len(self.memory) > self.batch_size:
+                if len(self.buffer) > self.batch_size:
                     
                     # Compute the actor loss with thw current step
                     done = T.tensor(done, dtype=T.int8, device=self.device)
@@ -179,7 +189,7 @@ class ActorCritic():
 
                     # Sample the Memory
                     obs_b, logp_b, reward_b, next_obs_b, done_b = \
-                                self.memory.sample(self.batch_size)
+                                self.buffer.sample(self.batch_size)
                     
                     obs_b = T.tensor(obs_b, dtype=T.float32, device=self.device)
                     logp_b = T.tensor(logp_b, dtype=T.float32, device=self.device)
@@ -219,7 +229,7 @@ class ActorCritic():
 
             reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
-            episodes += 1
+            self.episodes += 1
 
             if logger:
-                logger.log_episode(steps, ep_steps, episodes, ep_reward, mean_reward, 0)
+                logger.log_episode(steps, ep_steps, self.episodes, ep_reward, mean_reward, 0)

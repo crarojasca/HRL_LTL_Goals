@@ -2,7 +2,7 @@ from dataclasses import dataclass, asdict
 
 from logger import Logger, WanDBLogger, TensorboardLogger
 from env.fourrooms import Fourrooms, LTLFourrooms
-from env.breakout import Breakout, LTLBreakout
+from env.breakout import Breakout, LTLBreakout, BreakoutNRA
 from env.sapientino import Sapientino
 
 from agent.sarsa import Sarsa
@@ -32,6 +32,7 @@ agents = {
 envs = {
     "fourrooms": LTLFourrooms,
     "breakout": LTLBreakout,
+    "breakoutNRA": BreakoutNRA,
     "sapientino": Sapientino
 }
 
@@ -71,6 +72,7 @@ def main(cfg : DictConfig) -> None:
     if not cfg.env.name in envs:
         raise("Please declare an environment: fourrooms - breakout - sapientino")
 
+    print(envs[cfg.env.name])
     env = envs[cfg.env.name](**cfg.env)
         
     # Load Agent

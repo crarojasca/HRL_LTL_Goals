@@ -186,6 +186,7 @@ class OptionCritic:
         self.max_episodes = args.max_episodes
         self.max_steps_ep = args.max_steps_ep
         self.update_frequency = args.update_frequency
+        self.epochs = args.epochs
 
         # Device
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -212,9 +213,8 @@ class OptionCritic:
         self.freeze_interval = args.target_network.freeze_interval
 
         # Replay Memory
-        self.batch_size = args.replay_memory.batch_size
-        # self.buffer = ReplayBuffer(
-        #     capacity=args.replay_memory.max_history, seed=args.seed)    
+        self.batch_size = args.replay_memory.batch_size 
+        self.clear_epoch = args.replay_memory.clear_epoch
         
         self.buffer = ReplayMemory(
             capacity=args.replay_memory.max_history, 
@@ -332,7 +332,7 @@ class OptionCritic:
                 next_obs, reward, done, truncated, _ = env.step(action)
 
                 self.buffer.push(obs, current_option, reward, next_obs, done)
-                ep_reward += reward
+                ep_reward += reward 
 
                 actor_loss, critic_loss = None, None
                 if len(self.buffer) > self.batch_size:
@@ -381,5 +381,6 @@ class OptionCritic:
             self.episodes += 1
 
             if logger:
+                # print(self.steps, ep_steps, self.episodes, ep_reward, mean_reward, epsilon, option_lengths)
                 logger.log_episode(
                     self.steps, ep_steps, self.episodes, ep_reward, mean_reward, epsilon, option_lengths)

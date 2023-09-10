@@ -3,7 +3,7 @@ hydra:
     n_jobs: 5
   sweeper:
     params:
-      experiment: range(6, 11)
+      experiment: range(1, 11)
 
 experiment: 1
 note: null
@@ -22,7 +22,9 @@ model:
 
 defaults:
   - env: fourrooms
-  - agent: oc
+  - agent: a2c
   - override hydra/launcher: joblib
   - _self_
+
+
 

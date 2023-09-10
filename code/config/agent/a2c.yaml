@@ -3,12 +3,12 @@ name: A2C
 seed: null
 gamma : 0.99
 learning_rate: 1e-4
-max_episodes: 2
+max_episodes: 500
 max_steps_ep: 2000
 features_encoding: mlp
 
 network:
-  features_encoding: mlp
+  features_encoding: null
   dimensions:
     - 512
     - 256
@@ -26,5 +26,5 @@ replay_memory:
 
 target_network:
   enable: True
-  freeze_interval: 4
+  freeze_interval: 1
   tau : 0.005

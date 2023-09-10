@@ -31,7 +31,6 @@ class NN(nn.Module):
             )
             input_dim = dims[1]  
 
-        print(input_dim)
         self.policy = nn.Sequential(
             nn.Linear(input_dim, dims[-1]),
             nn.ReLU(),
@@ -82,7 +81,6 @@ class ActorCritic():
 
         # Parameters
         self.gamma = args.gamma
-        self.tau = args.target_network.tau
         self.batch_size = args.replay_memory.batch_size
         self.max_episodes = args.max_episodes
         self.max_steps_ep = args.max_steps_ep
@@ -97,20 +95,32 @@ class ActorCritic():
         self.network = NN(observation_space, action_space, self.device, 
                           features_encoding=args.network.features_encoding,
                           dims=args.network.dimensions)
-        self.target_network = NN(observation_space, action_space, self.device,
-                                 features_encoding=args.network.features_encoding,
-                                dims=args.network.dimensions)
-        self.target_network.load_state_dict(self.network.state_dict())
+        
+        
+        self.enable_target_network = args.target_network.enable
+        if self.enable_target_network:
+            self.tau = args.target_network.tau
+            self.target_network = NN(observation_space, action_space, self.device,
+                                    features_encoding=args.network.features_encoding,
+                                    dims=args.network.dimensions)
+            self.target_network.load_state_dict(self.network.state_dict())
+
         self.optimizer = optim.Adam(self.network.parameters(), lr=args.learning_rate)
 
         self.number_parameters = sum(p.numel() for p in self.network.parameters())  
 
         self.episodes = 0      
 
+        
+
     def get_actor_loss(self, obs, logp, reward, next_obs, done):
         # Get Critic Values
-        with T.no_grad():
-            _, _, _, Q_ = self.target_network.forward(next_obs)
+        if self.enable_target_network:
+            with T.no_grad():
+                _, _, _, Q_ = self.target_network.forward(next_obs)
+        else:
+            _, _, _, Q_  = self.network.forward(next_obs)
+
         _, _, _, Q  = self.network.forward(obs)
         
         # Compute delta
@@ -122,8 +132,13 @@ class ActorCritic():
     
     def get_critic_loss(self, obs, reward, next_obs, done):
         # Get Critic Values
-        with T.no_grad():
-            _, _, _, Q_ = self.target_network.forward(next_obs)
+        if self.enable_target_network:
+            with T.no_grad():
+                _, _, _, Q_ = self.target_network.forward(next_obs)
+        else:
+            _, _, _, Q_  = self.network.forward(next_obs)
+
+
         _, _, _, Q  = self.network.forward(obs)
         
         # Compute delta
@@ -208,12 +223,15 @@ class ActorCritic():
 
 
                     # Update NN parameters of the target network
-                    target_net_state_dict = self.target_network.state_dict()
-                    net_state_dict = self.network.state_dict()
-                    for key in net_state_dict:
-                        target_net_state_dict[key] = net_state_dict[key]*self.tau \
-                                + target_net_state_dict[key]*(1-self.tau)
-                    self.target_network.load_state_dict(target_net_state_dict)
+
+                    if self.enable_target_network:
+                        target_net_state_dict = self.target_network.state_dict()
+                        net_state_dict = self.network.state_dict()
+                        for key in net_state_dict:
+                            target_net_state_dict[key] = net_state_dict[key]*self.tau \
+                                    + target_net_state_dict[key]*(1-self.tau)
+                            
+                        self.target_network.load_state_dict(target_net_state_dict)
 
                 # Update counters
                 ep_reward += reward    

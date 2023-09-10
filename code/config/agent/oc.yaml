@@ -11,7 +11,7 @@ entropy_reg: 0.001
 termination_reg: 0.01 
 max_episodes: 500
 max_steps_ep: 18000 
-epochs: 80
+epochs: 1
 
 network:
   features_encoding: null

@@ -1,9 +1,12 @@
+import os
 import numpy as np
 
 import torch
 import torch.nn as nn
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
+
+from omegaconf import OmegaConf
 
 ################################## set device ##################################
 print("============================================================================================")
@@ -156,6 +159,8 @@ class PPO:
 
         self.update_timestep = args.max_steps_ep * 4
 
+        self.episodes = 0
+
         print("--------------------------------------------------------------------------------------------")
         print("state space dimension : ", observation_space.shape[0])
         print("action space dimension : ", action_space)
@@ -238,6 +243,22 @@ class PPO:
             self.buffer.state_values.append(state_val)
 
             return action.item()
+        
+    def save(self, conf, name):
+        hyperparameters = OmegaConf.to_container(conf, resolve=True)
+        torch.save(
+            {
+                'model_params': self.policy.state_dict(),
+                'hyperparameters': hyperparameters
+            }, os.path.join(conf.model.path, name)
+        )
+
+    def load(self, conf):
+        if conf.model.load_model:
+            checkpoint = torch.load(
+                os.path.join(conf.model.path, conf.model.load_model))
+            self.policy.load_state_dict(
+                checkpoint['model_params'])
 
     def update(self):
         # Monte Carlo estimate of returns
@@ -294,20 +315,12 @@ class PPO:
 
         return loss
     
-    def save(self, checkpoint_path):
-        torch.save(self.policy_old.state_dict(), checkpoint_path)
-   
-    def load(self, checkpoint_path):
-        self.policy_old.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
-        self.policy.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
-
     def run(self, env, logger=None):
 
         steps = 0
-        episodes = 0
         reward_list=[]
 
-        while episodes < self.max_episodes:
+        while self.episodes < self.max_episodes:
 
             ep_reward = 0; done = False ; ep_steps = 0; loss=None
 
@@ -344,7 +357,7 @@ class PPO:
                     
             reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
-            episodes += 1
+            self.episodes += 1
 
             if logger:
-                logger.log_episode(steps, ep_steps, episodes, ep_reward, mean_reward, 0)
+                logger.log_episode(steps, ep_steps, self.episodes, ep_reward, mean_reward, 0)

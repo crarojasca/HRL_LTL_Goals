@@ -5,7 +5,7 @@ gamma : 0.99
 learning_rate: 1e-4
 max_episodes: 500
 max_steps_ep: 2000
-features_encoding: mlp
+features_encoding: null
 
 network:
   features_encoding: null

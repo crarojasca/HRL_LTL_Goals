@@ -7,7 +7,7 @@ hydra:
 
 experiment: 1
 note: null
-replicate_experiment: null
+replicate_experiment: fourrooms_transfer_experiment
 logger:
   type: base
   folder_path: logs

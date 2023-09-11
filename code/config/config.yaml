@@ -7,7 +7,7 @@ hydra:
 
 experiment: 1
 note: null
-replicate_experiment: fourrooms_transfer_experiment
+replicate_experiment: null
 logger:
   type: base
   folder_path: logs
@@ -22,7 +22,7 @@ model:
 
 defaults:
   - env: fourrooms
-  - agent: ppo
+  - agent: a2c
   - override hydra/launcher: joblib
   - _self_
 

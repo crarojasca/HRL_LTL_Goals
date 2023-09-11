@@ -6,8 +6,8 @@ gamma: 0.99
 lr_actor: 0.0003 
 lr_critic: 0.001
 has_continuous_action_space: False
-max_episodes: 500
-max_steps_ep: 2000 
+max_episodes: 100000
+max_steps_ep: 350 
 eps_clip: 0.2 
 
 K_epochs: 80 

@@ -196,7 +196,7 @@ class ActorCritic():
                 
                 actor_loss=None; critic_loss=None
                 # Cast the variables
-                if len(self.buffer) > self.batch_size:
+                if len(self.buffer) >= self.batch_size:
                     
                     # Compute the actor loss with thw current step
                     done = T.tensor(done, dtype=T.int8, device=self.device)
@@ -244,7 +244,6 @@ class ActorCritic():
                     logger.log_data(
                         steps, reward, actor_loss, critic_loss, entropy, 0)
                             
-
             reward_list += [ep_reward]
             mean_reward = np.mean(reward_list[-100:])
             self.episodes += 1

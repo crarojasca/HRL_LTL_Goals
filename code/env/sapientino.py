@@ -551,7 +551,6 @@ class Sapientino(object):
         if (white_bip):
             self.current_reward += STATES['Dead']
             self.finished = True
-
            
 
         if (not self.finished and self.reward_shaping_enabled):

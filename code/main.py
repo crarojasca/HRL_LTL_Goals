@@ -106,7 +106,7 @@ def main(cfg : DictConfig) -> None:
         agent.run(env, logger)
 
         # Save Model
-        # agent.save(cfg, run_name)
+        agent.save(cfg, run_name)
 
     logger.close()
     print("FINISHED RUNNING")

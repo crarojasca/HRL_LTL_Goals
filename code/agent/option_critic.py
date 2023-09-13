@@ -187,6 +187,7 @@ class OptionCritic:
         self.max_steps_ep = args.max_steps_ep
         self.update_frequency = args.update_frequency
         self.epochs = args.epochs
+        self.gamma = args.gamma
 
         # Device
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -218,13 +219,15 @@ class OptionCritic:
         
         self.buffer = ReplayMemory(
             capacity=args.replay_memory.max_history, 
-            values=("obs", "option", "reward", "next_obs", "done"),
+            values=("obs", "option", "logp", "entropy", "reward", "next_obs", "done"),
             seed=args.seed
         )
         
         # Counters
         self.steps = 0
         self.episodes = 0
+        self.entropy_reg = args.entropy_reg
+        self.termination_reg = args.termination_reg
 
     def save(self, conf, name):
         hyperparameters = OmegaConf.to_container(conf, resolve=True)
@@ -250,6 +253,7 @@ class OptionCritic:
         rewards   = torch.FloatTensor(rewards).to(model.device)
         masks     = 1 - torch.FloatTensor(dones).to(model.device)
 
+
         # The loss is the TD loss of Q and the update target, so we need to calculate Q
         states = model.get_state(obs).squeeze(0)
         Q      = model.get_Q(states)
@@ -266,7 +270,7 @@ class OptionCritic:
         # Now we can calculate the update target gt
         gt = rewards + masks * args.gamma * \
             ((1 - next_options_term_prob) * next_Q_prime[batch_idx, options] \
-             + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
+            + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
 
         # to update Q we want to use the actual network, not the prime
         # criterion = nn.SmoothL1Loss()
@@ -301,6 +305,56 @@ class OptionCritic:
         policy_loss = -logp * (gt.detach() - Q[option]) - args.entropy_reg * entropy
         actor_loss = termination_loss + policy_loss
         return actor_loss
+    
+    def loss_fn(self, data_batch):
+        obs, options, logp, entropy, rewards, next_obs, dones = data_batch
+        batch_idx = torch.arange(len(options)).long()
+        options   = torch.LongTensor(options).to(self.option_critic.device)
+        logp   = torch.FloatTensor(logp).to(self.option_critic.device)
+        entropy   = torch.FloatTensor(entropy).to(self.option_critic.device)
+        rewards   = torch.FloatTensor(rewards).to(self.option_critic.device)
+        dones     = 1 - torch.tensor(dones, dtype=torch.int8, device=self.option_critic.device)
+
+        # The loss is the TD loss of Q and the update target, so we need to calculate Q
+        states = self.option_critic.get_state(obs).squeeze(0)
+        Q      = self.option_critic.get_Q(states)
+        
+        # the update target contains Q_next, but for stable learning we use prime network for this
+        next_states_prime = self.option_critic_prime.get_state(next_obs).squeeze(0)
+        next_Q_prime      = self.option_critic_prime.get_Q(next_states_prime) # detach?
+
+        # Additionally, we need the beta probabilities of the next state
+        next_states            = self.option_critic.get_state(next_obs).squeeze(0)
+        next_termination_probs = self.option_critic.get_terminations(next_states).detach()
+        next_options_term_prob = next_termination_probs[batch_idx, options]
+
+        # Now we can calculate the update target gt
+        gt = rewards + dones * self.gamma * \
+            ((1 - next_options_term_prob) * next_Q_prime[batch_idx, options] \
+            + next_options_term_prob  * next_Q_prime.max(dim=-1)[0])
+
+        # to update Q we want to use the actual network, not the prime
+        # criterion = nn.SmoothL1Loss()
+        # loss = criterion(Q[batch_idx, options], gt.detach().unsqueeze(1))
+        critic_loss = (Q[batch_idx, options] - gt.detach()).pow(2).mul(0.5).mean()
+
+        next_states = self.option_critic.get_state(next_obs)
+
+        option_term_prob = self.option_critic.get_terminations(states)[batch_idx, options]
+        # next_option_term_prob = self.option_critic.get_terminations(next_states)[:, options].detach()
+
+        Q_option = Q[batch_idx, options].detach()
+        Q_max = Q.max(dim=-1)[0].detach()
+        # The termination loss
+        termination_loss = option_term_prob * (Q_option -  Q_max\
+                                         + self.termination_reg) * (1 - dones)
+        
+        # actor-critic policy gradient with entropy regularization
+        # print(logp.reshape(-1).shape, gt.shape, Q_option.shape, entropy.shape)
+        policy_loss = -logp.reshape(-1) * (gt - Q_option) - self.entropy_reg * entropy.reshape(-1)
+        actor_loss = (termination_loss + policy_loss).sum()
+
+        return actor_loss, critic_loss
 
     def run(self, env, logger=None):
 
@@ -331,26 +385,33 @@ class OptionCritic:
 
                 next_obs, reward, done, truncated, _ = env.step(action)
 
-                self.buffer.push(obs, current_option, reward, next_obs, done)
+                # ("obs", "option", "logp", "entropy", "reward", "next_obs", "done")
+                self.buffer.push(obs, current_option, logp.cpu().detach().numpy(), 
+                                 entropy.cpu().detach().numpy(), reward, next_obs, done)
                 ep_reward += reward 
 
                 actor_loss, critic_loss = None, None
                 if len(self.buffer) > self.batch_size:
-                    actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
-                        reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
-                    loss = actor_loss
+                    # actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
+                    #     reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
+                    # loss = actor_loss
 
                     if self.steps % self.update_frequency == 0:
+                        
                         data_batch = self.buffer.sample(self.batch_size)
-                        critic_loss = self.critic_loss_fn(
-                            self.option_critic, self.option_critic_prime, data_batch, self.args)
-                        loss += critic_loss
+                    #     critic_loss = self.critic_loss_fn(
+                    #         self.option_critic, self.option_critic_prime, data_batch, self.args)
+                    #     loss += critic_loss
 
-                    self.optim.zero_grad()
-                    loss.backward()
-                    self.optim.step()
+                        for _ in range(self.epochs):
+                            actor_loss, critic_loss = self.loss_fn(data_batch)
+                            loss = actor_loss + critic_loss
 
-                    if self.steps % self.freeze_interval == 0:
+                            self.optim.zero_grad()
+                            loss.backward()
+                            self.optim.step()
+
+                        # if self.steps % self.freeze_interval == 0:
                         # Soft update of the target network's weights
                         # θ′ ← τ θ + (1 −τ )θ′
                         net_state_dict = self.option_critic.state_dict()
@@ -359,6 +420,10 @@ class OptionCritic:
                             target_net_state_dict[key] = net_state_dict[key]*self.tau + \
                                 target_net_state_dict[key]*(1-self.tau)
                         self.option_critic_prime.load_state_dict(target_net_state_dict)
+
+                        # self.option_critic_prime.load_state_dict(self.option_critic.state_dict())
+
+                        self.buffer.clear()
 
                 state = self.option_critic.get_state(next_obs)
                 option_termination, greedy_option = self.option_critic.predict_option_termination(

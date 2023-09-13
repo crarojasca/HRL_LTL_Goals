@@ -190,10 +190,7 @@ class ActorCritic():
                     obs, logp.cpu().detach().numpy(), reward, next_obs, done)
                 
                 # Optimize the main network
-                
 
-                
-                
                 actor_loss=None; critic_loss=None
                 # Cast the variables
                 if len(self.buffer) >= self.batch_size:

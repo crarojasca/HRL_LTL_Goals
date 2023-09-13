@@ -584,7 +584,8 @@ class DummySpec:
     
 
 class LTLBreakout(Breakout):
-    def __init__(self, brick_rows=3, brick_cols=3, seed=42, render=False, name="breakout"):
+    def __init__(self, brick_rows=3, brick_cols=3, fire_enabled=False, 
+                 seed=42, render=False, name="breakout"):
         Breakout.__init__(self, brick_rows, brick_cols, seed, render, name)
         self.spec = BricksOrderSpec(self.brick_rows, self.brick_cols)
         self.observation_space = spaces.Box(

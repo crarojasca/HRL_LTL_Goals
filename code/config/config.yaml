@@ -3,9 +3,9 @@ hydra:
     n_jobs: 5
   sweeper:
     params:
-      experiment: range(1, 11)
+      experiment: range(11, 21)
 
-experiment: 1
+experiment: 11
 note: null
 replicate_experiment: null
 logger:

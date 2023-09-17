@@ -1,15 +1,15 @@
-# Breakout
+# Sapientino
 name: OC
 
 seed: null
 temp: 1
 gamma: 0.99
-num_options: 16
+num_options: 8
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 6000
-max_steps_ep: 2000
+max_episodes: 20000
+max_steps_ep: 350
 epochs: 1
 update_frequency: 4
 
@@ -35,7 +35,7 @@ replay_memory:
 target_network:
   enable: True
   freeze_interval: 200
-  tau : 1
+  tau : 0.05
 
 # Fourrooms
 # name: OC
@@ -73,3 +73,42 @@ target_network:
 #   enable: True
 #   freeze_interval: 4
 #   tau : 0.005
+
+# Breakout
+# name: OC
+
+# seed: null
+# temp: 1
+# gamma: 0.99
+# num_options: 16
+# learning_rate: 1e-4
+# entropy_reg: 0.001 
+# termination_reg: 0.01 
+# max_episodes: 6000
+# max_steps_ep: 2000
+# epochs: 1
+# update_frequency: 4
+
+# network:
+#   features_encoding: mlp
+#   dimensions:
+#     - 512
+#     - 256
+#     - 128
+
+# epsilon:
+#   start: 0.9
+#   min: 0.1
+#   decay: 10000
+#   optimal: 0.05 
+
+# replay_memory:
+#   enable: True
+#   batch_size: 64
+#   max_history: 1000000
+#   clear_epoch: False
+
+# target_network:
+#   enable: True
+#   freeze_interval: 200
+#   tau : 0.05

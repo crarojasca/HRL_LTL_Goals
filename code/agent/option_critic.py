@@ -359,6 +359,7 @@ class OptionCritic:
     def run(self, env, logger=None):
 
         reward_list=[]
+        best_ep_reward = 0
 
         while self.episodes < self.max_episodes:
 
@@ -392,24 +393,24 @@ class OptionCritic:
 
                 actor_loss, critic_loss = None, None
                 if len(self.buffer) > self.batch_size:
-                    # actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
-                    #     reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
-                    # loss = actor_loss
+                    actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
+                        reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
+                    loss = actor_loss
 
                     if self.steps % self.update_frequency == 0:
                         
                         data_batch = self.buffer.sample(self.batch_size)
-                    #     critic_loss = self.critic_loss_fn(
-                    #         self.option_critic, self.option_critic_prime, data_batch, self.args)
-                    #     loss += critic_loss
+                        critic_loss = self.critic_loss_fn(
+                            self.option_critic, self.option_critic_prime, data_batch, self.args)
+                        loss += critic_loss
 
-                        for _ in range(self.epochs):
-                            actor_loss, critic_loss = self.loss_fn(data_batch)
-                            loss = actor_loss + critic_loss
+                        # for _ in range(self.epochs):
+                        #     actor_loss, critic_loss = self.loss_fn(data_batch)
+                        #     loss = actor_loss + critic_loss
 
-                            self.optim.zero_grad()
-                            loss.backward()
-                            self.optim.step()
+                        self.optim.zero_grad()
+                        loss.backward()
+                        self.optim.step()
 
                         # if self.steps % self.freeze_interval == 0:
                         # Soft update of the target network's weights

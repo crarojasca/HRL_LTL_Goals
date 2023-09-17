@@ -4,11 +4,11 @@ name: OC
 seed: null
 temp: 1
 gamma: 0.99
-num_options: 8
+num_options: 16
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 3000
+max_episodes: 6000
 max_steps_ep: 2000
 epochs: 1
 update_frequency: 4

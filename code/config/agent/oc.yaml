@@ -8,7 +8,7 @@ num_options: 8
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 
-max_episodes: 20000
+max_episodes: 30000
 max_steps_ep: 350
 epochs: 1
 update_frequency: 4
@@ -28,7 +28,7 @@ epsilon:
 
 replay_memory:
   enable: True
-  batch_size: 64
+  batch_size: 1400
   max_history: 1000000
   clear_epoch: False
 

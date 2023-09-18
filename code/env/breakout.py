@@ -610,7 +610,7 @@ class LTLBreakout(Breakout):
         # Prod State
         next_prod_state = np.concatenate([evn_state, spec_state], 0)
 
-        return next_prod_state, env_reward, env_done, False, None
+        return next_prod_state, spec_reward, env_done, False, None
 
     def reward(self, acceptances):
 

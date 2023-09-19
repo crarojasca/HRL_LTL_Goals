@@ -1,4 +1,4 @@
-# Sapientino
+# Breakout
 name: PPO
 
 seed: null
@@ -6,8 +6,8 @@ gamma: 0.99
 lr_actor: 0.0001 
 lr_critic: 0.001
 has_continuous_action_space: False
-max_episodes: 100000
-max_steps_ep: 350 
+max_episodes: 6000
+max_steps_ep: 2000 
 eps_clip: 0.2 
 
 K_epochs: 80 
@@ -17,3 +17,23 @@ action_std:
   decay_rate: 0.05 
   min: 0.1        
   decay_freq: 2.5e5
+
+# Sapientino
+# name: PPO
+
+# seed: null
+# gamma: 0.99
+# lr_actor: 0.0001 
+# lr_critic: 0.001
+# has_continuous_action_space: False
+# max_episodes: 100000
+# max_steps_ep: 350 
+# eps_clip: 0.2 
+
+# K_epochs: 80 
+
+# action_std:
+#   init: 0.6
+#   decay_rate: 0.05 
+#   min: 0.1        
+#   decay_freq: 2.5e5

@@ -284,17 +284,19 @@ class Sapientino(object):
             "integer": State_cfg(
                 observation_space=spaces.Discrete(1), get_state=self.integerState),
             "features": State_cfg(
-                spaces.Box(low=0., high=1., shape=(5 + len(TOKENS) + len(COLORS),)), 
+                spaces.Box(low=0., high=1., shape=(4 + len(TOKENS) + len(COLORS),)), 
                 self.featuresState),
-            "screen": State_cfg(
-                observation_space={
-                    "env": spaces.Box(low=0., high=255., shape=(self.win_height, self.win_height, 3)),
-                    "spec": spaces.Discrete(1)
-                }, 
-                get_state=self.screenState),
+            # "screen": State_cfg(
+            #     observation_space={
+            #         "env": spaces.Box(low=0., high=255., shape=(self.win_height, self.win_height, 3)),
+            #         "spec": spaces.Discrete(1)
+            #     }, 
+            #     get_state=self.screenState),
         }
 
         self.observation_space = self.state_cfg[self.type_state].observation_space
+
+        self.step_cell_bip = None
 
       
 
@@ -323,11 +325,13 @@ class Sapientino(object):
             self.tokenbip[t[0]] = 0
             self.colorbip[t[1]] = 0
         self.countbip=0
-        self.RA.reset()
+        # self.RA.reset()
 
         # RA exploration
-        self.RA_exploration()
+        # self.RA_exploration()
         self.draw()
+
+        self.step_cell_bip = None
 
         return self.getstate(), None
 
@@ -342,7 +346,7 @@ class Sapientino(object):
             x += (self.pos_th/90) * (self.rows * self.cols)
         if (self.colorsensor):
             x += self.encode_color() * (self.rows * self.cols * 4)
-        x += self.nstates * self.RA.RAnode     
+        # x += self.nstates * self.RA.RAnode     
         return [x]
     
     def featuresState(self):
@@ -355,23 +359,23 @@ class Sapientino(object):
         # Colors
         colors = list(self.colorbip.values())
 
-        ra_state = [self.RA.RAnode]
+        # ra_state = [self.RA.RAnode]
 
-        state = pos + diff + color + tokens + colors + ra_state
+        state = pos + diff + color + tokens + colors #+ ra_state
         return state
     
-    def screenState(self):
+    # def screenState(self):
 
-        screen_state = pygame.surfarray.array3d(pygame.display.get_surface())
-        screen_state = screen_state.swapaxes(0,1)
-        ra_state = np.array([self.RA.RAnode])
+    #     screen_state = pygame.surfarray.array3d(pygame.display.get_surface())
+    #     screen_state = screen_state.swapaxes(0,1)
+    #     # ra_state = np.array([self.RA.RAnode])
 
-        state = {
-            "env": screen_state,
-            "spec": ra_state
-        }
+    #     state = {
+    #         "env": screen_state,
+    #         "spec": ra_state
+    #     }
 
-        return screen_state
+    #     return screen_state
     
     def getstate(self):
         return self.state_cfg[self.type_state].get_state()
@@ -408,17 +412,18 @@ class Sapientino(object):
                 break
         return r
 
-    def RA_exploration(self):
-        if not self.RA_exploration_enabled:
-            return
-        #print("RA state: ",self.RA.RAnode)
-        success_rate = max(min(self.RA.current_successrate(),0.9),0.1)
-        #print("RA exploration policy: current state success rate ",success_rate)
-        er = random.random()
-        #print("RA exploration policy: optimal ",self.agent.partialoptimal, "\n")
+    # def RA_exploration(self):
+    #     if not self.RA_exploration_enabled:
+    #         return
+    #     #print("RA state: ",self.RA.RAnode)
+    #     success_rate = max(min(self.RA.current_successrate(),0.9),0.1)
+    #     #print("RA exploration policy: current state success rate ",success_rate)
+    #     er = random.random()
+    #     #print("RA exploration policy: optimal ",self.agent.partialoptimal, "\n")
         
     def step(self, action):
         
+        self.step_cell_bip = None
         self.command = action
 
         self.prev_state = self.getstate() # remember previous state
@@ -507,6 +512,7 @@ class Sapientino(object):
 
         if self.command == 4:  # bip
             self.update_color()
+            self.step_cell_bip = (self.pos_x, self.pos_y)
             if (self.check_color()!=' '):
                 pass
                 #self.current_reward += STATES['Score']
@@ -519,23 +525,23 @@ class Sapientino(object):
         self.current_reward += STATES['Alive']
 
 
-        if (self.differential):
-            (RAr,state_changed) = self.RA.update(a)  # consider also turn actions
-        else:
-            (RAr,state_changed) = self.RA.update()
+        # if (self.differential):
+        #     (RAr,state_changed) = self.RA.update(a)  # consider also turn actions
+        # else:
+        #     (RAr,state_changed) = self.RA.update()
 
-        self.current_reward += RAr
+        # self.current_reward += RAr
 
         # RA exploration
-        if (state_changed):
-            self.RA_exploration()
+        # if (state_changed):
+        #     self.RA_exploration()
 
         # set score
-        RAnode = self.RA.RAnode
-        if (RAnode==self.RA.RAFail):
-            RAnode = self.RA.last_node
+        # RAnode = self.RA.RAnode
+        # if (RAnode==self.RA.RAFail):
+        #     RAnode = self.RA.last_node
 
-        self.score = self.RA.countupdates
+        # self.score = self.RA.countupdates
 
         
         # check if episode finished
@@ -546,8 +552,8 @@ class Sapientino(object):
         if (self.numactions>(self.cols*self.rows)*10):
             self.current_reward += STATES['Dead']
             self.finished = True
-        if (self.RA.RAnode==self.RA.RAFail):
-            self.finished = True
+        # if (self.RA.RAnode==self.RA.RAFail):
+        #     self.finished = True
         if (white_bip):
             self.current_reward += STATES['Dead']
             self.finished = True
@@ -657,4 +663,51 @@ class Sapientino(object):
 
     def quit(self):
         pygame.quit()
+
+
+COLORS = ['red', 'green', 'blue', 'pink', 'brown', 'gray', 'purple' ]
+
+TOKENS = [ ['r1', COLORS[0], 0, 0],  ['r2', 'red', 1, 1], ['r3', 'red', 6, 3],   
+    ['g1', 'green', 4, 0], ['g2', 'green', 5, 2], ['g3', 'green', 5, 4],
+    ['b1', 'blue', 1, 3], ['b2', 'blue', 2, 4],  ['b3', 'blue', 6, 0], 
+    ['p1', 'pink', 2, 1], ['p2', 'pink', 2, 3], ['p3', 'pink', 4, 2], 
+    ['n1', 'brown', 3, 0], ['n2', 'brown', 3, 4], ['n3', 'brown', 6, 1],
+    ['y1', 'gray', 0, 2], ['y2', 'gray', 3, 1], ['y3', 'gray', 4, 3],
+    ['u1', 'purple', 0, 4], ['u2', 'purple', 1, 0], ['u3', 'purple', 5, 1]
+]
+
+class ColorSpec():
+
+    def __init__(self, colors, tokens) -> None:
+
+        self.colors = colors
+        self.tokens = {} 
+
+        for token in tokens:
+            color = token[1]
+            x, y = token[2], token[3]
+
+            if color in self.tokens:
+                self.tokens[color].append((x, y))
+
+        self.current_color = None
+
+
+    def step(self, cell_bip):
+
+        pass
+
         
+
+class LTLSapientino(Sapientino):
+
+    def __init__(self, seed=42, rows=5, cols=7, name=None, trainsessionname='test', 
+                 ncol=7, nvisitpercol=2, type_state="features", render=False):
+        
+        super().__init__(seed, rows, cols, name, trainsessionname, ncol, 
+                         nvisitpercol, type_state, render)
+        
+        self.spec = self.step_cell_bip = None
+        
+    def step(self, action):
+        return super().step(action)

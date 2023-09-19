@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 from logger import Logger, WanDBLogger, TensorboardLogger
 from env.fourrooms import Fourrooms, LTLFourrooms
 from env.breakout import Breakout, LTLBreakout, BreakoutNRA
-from env.sapientino import Sapientino
+from env.sapientino import Sapientino, LTLSapientino
 
 from agent.sarsa import Sarsa
 from agent.dqn import DQN
@@ -33,7 +33,7 @@ envs = {
     "fourrooms": LTLFourrooms,
     "breakout": LTLBreakout,
     "breakoutNRA": BreakoutNRA,
-    "sapientino": Sapientino
+    "sapientino": LTLSapientino
 }
 
 def fourrooms_transfer_experiment(env, agent, logger, cfg, run_name):

@@ -393,9 +393,9 @@ class OptionCritic:
 
                 actor_loss, critic_loss = None, None
                 if len(self.buffer) > self.batch_size:
-                    # actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
-                    #     reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
-                    # loss = actor_loss
+                    actor_loss = self.actor_loss_fn(obs, current_option, logp, entropy, \
+                        reward, done, next_obs, self.option_critic, self.option_critic_prime, self.args)
+                    loss = actor_loss
 
                     if self.steps % self.update_frequency == 0:
                         
@@ -405,23 +405,22 @@ class OptionCritic:
                         # loss += critic_loss
 
                         for _ in range(self.epochs):
-                            actor_loss, critic_loss = self.loss_fn(data_batch)
-                            
+                            _, critic_loss = self.loss_fn(data_batch)
                             loss = actor_loss + critic_loss
                             
-                            self.optim.zero_grad()
-                            loss.backward()
-                            self.optim.step()
+                        self.optim.zero_grad()
+                        loss.backward()
+                        self.optim.step()
 
-                        # if self.steps % self.freeze_interval == 0:
+                        if self.steps % self.freeze_interval == 0:
                         # Soft update of the target network's weights
                         # θ′ ← τ θ + (1 −τ )θ′
-                        net_state_dict = self.option_critic.state_dict()
-                        target_net_state_dict = self.option_critic_prime.state_dict()
-                        for key in net_state_dict:
-                            target_net_state_dict[key] = net_state_dict[key]*self.tau + \
-                                target_net_state_dict[key]*(1-self.tau)
-                        self.option_critic_prime.load_state_dict(target_net_state_dict)
+                            net_state_dict = self.option_critic.state_dict()
+                            target_net_state_dict = self.option_critic_prime.state_dict()
+                            for key in net_state_dict:
+                                target_net_state_dict[key] = net_state_dict[key]*self.tau + \
+                                    target_net_state_dict[key]*(1-self.tau)
+                            self.option_critic_prime.load_state_dict(target_net_state_dict)
 
                         # self.option_critic_prime.load_state_dict(self.option_critic.state_dict())
 

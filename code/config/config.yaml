@@ -22,7 +22,7 @@ model:
 
 defaults:
   - env: breakout
-  - agent: ppo
+  - agent: oc
   - override hydra/launcher: joblib
   - _self_
 

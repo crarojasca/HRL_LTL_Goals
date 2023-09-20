@@ -248,7 +248,7 @@ class PPO:
         hyperparameters = OmegaConf.to_container(conf, resolve=True)
         torch.save(
             {
-                'model_params': self.policy.state_dict(),
+                'model_params': self.policy_old.state_dict(),
                 'hyperparameters': hyperparameters
             }, os.path.join(conf.model.path, name)
         )

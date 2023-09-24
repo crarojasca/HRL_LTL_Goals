@@ -9,7 +9,7 @@ experiment: 1
 note: null
 replicate_experiment: null
 logger:
-  type: wandb  # base - tensorboard - wandb
+  type: base  # base - tensorboard - wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False

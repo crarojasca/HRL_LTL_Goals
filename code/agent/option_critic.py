@@ -365,7 +365,7 @@ class OptionCritic:
 
             ep_reward = 0 ; option_lengths = {opt:[] for opt in range(self.num_options)}
             
-            obs, info = env.reset()
+            obs = env.reset()
             state = self.option_critic.get_state(obs)
             greedy_option  = self.option_critic.greedy_option(state)
             current_option = 0
@@ -373,7 +373,7 @@ class OptionCritic:
             done = False ; truncated=False
             ep_steps = 0 ; option_termination = True ; curr_op_len = 0
                       
-            while not(done or truncated) and ep_steps < self.max_steps_ep:
+            while not done and ep_steps < self.max_steps_ep:
                 
                 epsilon = self.option_critic.update_epsilon()
 
@@ -384,7 +384,7 @@ class OptionCritic:
                     curr_op_len = 0
                 action, logp, entropy, probs = self.option_critic.get_action(state, current_option)
 
-                next_obs, reward, done, truncated, _ = env.step(action)
+                next_obs, reward, done, _ = env.step(action)
 
                 # ("obs", "option", "logp", "entropy", "reward", "next_obs", "done")
                 self.buffer.push(obs, current_option, logp.cpu().detach().numpy(), 

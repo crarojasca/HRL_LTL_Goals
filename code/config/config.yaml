@@ -1,6 +1,6 @@
 hydra:
   launcher:
-    n_jobs: 5
+    n_jobs: 3
   sweeper:
     params:
       experiment: range(1, 11)
@@ -9,7 +9,7 @@ experiment: 1
 note: null
 replicate_experiment: null
 logger:
-  type: base
+  type: wandb  # base - tensorboard - wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False
@@ -19,6 +19,9 @@ logger:
 model:
   path: models
   load_model: null
+
+# env:
+#   name: CartPole-v1
 
 defaults:
   - env: breakout

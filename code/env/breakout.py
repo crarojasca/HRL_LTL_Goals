@@ -454,169 +454,6 @@ class Breakout(gym.Env):
 
         pygame.display.update()
 
-class HalfScreenSpec:
-    def __init__(self, row, cols):
-        self.half = cols//2
-        self.state = 0
-        self.transitions = [
-            {"a": 1, "b": 2},
-            {"a": 1, "b": 2},
-            {"a": 1, "b": 2},
-        ]
-        self.acceptances = [
-            {"a": True, "b": True},
-            {"a": False, "b": True},
-            {"a": True, "b": False},
-        ]
-
-    def reset(self):
-        self.state = 0
-        return self.encode_state(self.state)
-    
-    def __len__(self):
-        return 3
-        # return len(self.sequence)
-    
-    def encode_state(self, state):
-        encoded_state = np.zeros((self.__len__()))
-        encoded_state[state] = 1
-        return encoded_state
-
-    def step(self, label):
-        
-        reward = 0
-        done = False
-        # Check Label transitions the StateMachine
-
-        if label:
-            
-            if self.acceptances[self.state][label]:
-                reward = 10
-                done = False
-            # else:
-            #     done = True
-
-            self.state = self.transitions[self.state][label]
-                
-        encoded_state = self.encode_state(self.state)
-        return encoded_state, reward, done
-    
-    def label(self, brick):
-        if brick and brick.j == 0:
-            if brick.i < self.half:
-                return "a"
-            return "b"
-        
-class BricksOrderSpec:
-    def __init__(self, nrow, ncols):
-        self.half = ncols//2
-        self.state = 0
-
-        self.transitions = []
-        self.acceptances = []
-        for c1 in range(ncols):
-            state_transitions = {c2:c2 for c2 in range(ncols)} 
-            state_transitions[None] = c1
-            self.transitions.append(state_transitions)
-   
-            state_acceptances = {c2: (True if c2>=c1 else False) for c2 in range(ncols)} 
-            state_acceptances[None] = False
-            self.acceptances.append(state_acceptances)
-
-    def reset(self):
-        self.state = 0
-        return self.encode_state(self.state)
-    
-    def __len__(self):
-        return len(self.transitions)
-    
-    def encode_state(self, state):
-        encoded_state = np.zeros((self.__len__()))
-        encoded_state[state] = 1
-        return encoded_state
-
-    def step(self, label):
-        
-        reward = 0
-        done = False
-        # Check Label transitions the StateMachine
-
-            
-        if self.acceptances[self.state][label]:
-            reward = 10
-
-        self.state = self.transitions[self.state][label]
-                
-        encoded_state = self.encode_state(self.state)
-        return encoded_state, reward, done
-    
-    def label(self, brick):
-        if brick:
-            return brick.i
-        return None
-    
-class DummySpec:
-    def __init__(self, nrow, ncols):
-        self.state = 0
-        self.nrow = nrow
-
-    def reset(self):
-        self.state = 0
-        return self.encode_state(self.state)
-    
-    def __len__(self):
-        return self.nrow
-    
-    def encode_state(self, state):
-        encoded_state = np.zeros((self.__len__()))
-        encoded_state[state] = 1
-        return encoded_state
-
-    def step(self, label):
-        
-        reward = 0
-        done = False                
-        encoded_state = self.encode_state(self.state)
-        return encoded_state, reward, done
-    
-    def label(self, brick):
-        return None
-    
-
-class LTLBreakout(Breakout):
-    def __init__(self, brick_rows=3, brick_cols=3, fire_enabled=False, 
-                 seed=42, render=False, name="breakout"):
-        Breakout.__init__(self, brick_rows, brick_cols, seed, render, name)
-        self.spec = BricksOrderSpec(self.brick_rows, self.brick_cols)
-        self.observation_space = spaces.Box(
-            low=0., high=1., shape=(self.observation_space.shape[0]+len(self.spec),))
-                
-    def reset(self):
-        env_state, info = Breakout.reset(self)
-        spec_state = self.spec.reset()
-        next_prod_state = np.concatenate([env_state, spec_state], 0)
-        return next_prod_state, None
-
-    def step(self, action):
-
-        # Fourroom State
-        evn_state, env_reward, env_done, _, _  = Breakout.step(self, action)
-
-        # Spec State
-
-        labeled_actions = self.spec.label(self.hit_brick)
-        spec_state, spec_reward, spec_done = self.spec.step(labeled_actions)
-
-        # Prod State
-        next_prod_state = np.concatenate([evn_state, spec_state], 0)
-
-        return next_prod_state, spec_reward, env_done, False, None
-
-    def reward(self, acceptances):
-
-        self.rewards = [1 if acc else 0 for acc in acceptances]
-        return self.rewards
-
 class RewardAutoma(object):
 
     def __init__(self, brick_cols=0, type="left2right"): # brick_cols=0 -> RA disabled
@@ -866,3 +703,169 @@ class BreakoutNRA(Breakout):
         er = random.random()
         self.agent.option_enabled = (er<success_rate)
         #print("RA exploration policy: optimal ",self.agent.partialoptimal, "\n")
+
+class HalfScreenSpec:
+    def __init__(self, row, cols):
+        self.half = cols//2
+        self.state = 0
+        self.transitions = [
+            {"a": 1, "b": 2},
+            {"a": 1, "b": 2},
+            {"a": 1, "b": 2},
+        ]
+        self.acceptances = [
+            {"a": True, "b": True},
+            {"a": False, "b": True},
+            {"a": True, "b": False},
+        ]
+
+    def reset(self):
+        self.state = 0
+        return self.encode_state(self.state)
+    
+    def __len__(self):
+        return 3
+        # return len(self.sequence)
+    
+    def encode_state(self, state):
+        encoded_state = np.zeros((self.__len__()))
+        encoded_state[state] = 1
+        return encoded_state
+
+    def step(self, label):
+        
+        reward = 0
+        done = False
+        # Check Label transitions the StateMachine
+
+        if label:
+            
+            if self.acceptances[self.state][label]:
+                reward = 10
+                done = False
+            # else:
+            #     done = True
+
+            self.state = self.transitions[self.state][label]
+                
+        encoded_state = self.encode_state(self.state)
+        return encoded_state, reward, done
+    
+    def label(self, brick):
+        if brick and brick.j == 0:
+            if brick.i < self.half:
+                return "a"
+            return "b"
+        
+class BricksOrderSpec:
+    def __init__(self, nrow, ncols):
+        self.half = ncols//2
+        self.state = 0
+
+        self.transitions = []
+        self.acceptances = []
+        for c1 in range(ncols):
+            state_transitions = {c2:c2 for c2 in range(ncols)} 
+            state_transitions[None] = c1
+            self.transitions.append(state_transitions)
+   
+            state_acceptances = {c2: (True if c2>=c1 else False) for c2 in range(ncols)} 
+            state_acceptances[None] = False
+            self.acceptances.append(state_acceptances)
+
+    def reset(self):
+        self.state = 0
+        return self.encode_state(self.state)
+    
+    def __len__(self):
+        return len(self.transitions)
+    
+    def encode_state(self, state):
+        encoded_state = np.zeros((self.__len__()))
+        encoded_state[state] = 1
+        return encoded_state
+
+    def step(self, label):
+        
+        reward = 0
+        done = False
+        # Check Label transitions the StateMachine
+
+            
+        if self.acceptances[self.state][label]:
+            reward = 10
+
+        self.state = self.transitions[self.state][label]
+                
+        encoded_state = self.encode_state(self.state)
+        return encoded_state, reward, done
+    
+    def label(self, brick):
+        if brick:
+            return brick.i
+        return None
+    
+class DummySpec:
+    def __init__(self, nrow, ncols):
+        self.state = 0
+        self.nrow = nrow
+
+    def reset(self):
+        self.state = 0
+        return self.encode_state(self.state)
+    
+    def __len__(self):
+        return self.nrow
+    
+    def encode_state(self, state):
+        encoded_state = np.zeros((self.__len__()))
+        encoded_state[state] = 1
+        return encoded_state
+
+    def step(self, label):
+        
+        reward = 0
+        done = False                
+        encoded_state = self.encode_state(self.state)
+        return encoded_state, reward, done
+    
+    def label(self, brick):
+        return None
+    
+
+class LTLBreakout(Breakout):
+    def __init__(self, brick_rows=3, brick_cols=3, fire_enabled=False, 
+                 seed=42, render=False, name="breakout"):
+        Breakout.__init__(
+            self, brick_rows=brick_rows, brick_cols=brick_cols, 
+            fire_enabled=False, seed=seed, render=render, name=name)
+        self.spec = BricksOrderSpec(self.brick_rows, self.brick_cols)
+        self.observation_space = spaces.Box(
+            low=0., high=1., shape=(self.observation_space.shape[0]+len(self.spec),))
+                
+    def reset(self):
+        env_state, info = Breakout.reset(self)
+        spec_state = self.spec.reset()
+        next_prod_state = np.concatenate([env_state, spec_state], 0)
+        return next_prod_state, None
+
+    def step(self, action):
+
+        # Fourroom State
+        evn_state, env_reward, env_done, _, _  = Breakout.step(self, action)
+
+        # Spec State
+
+        labeled_actions = self.spec.label(self.hit_brick)
+        spec_state, spec_reward, spec_done = self.spec.step(labeled_actions)
+
+        # Prod State
+        next_prod_state = np.concatenate([evn_state, spec_state], 0)
+
+        return next_prod_state, spec_reward, env_done, False, None
+
+    def reward(self, acceptances):
+
+        self.rewards = [1 if acc else 0 for acc in acceptances]
+        return self.rewards
+

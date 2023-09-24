@@ -1,3 +1,4 @@
+import gym
 from dataclasses import dataclass, asdict
 
 from logger import Logger, WanDBLogger, TensorboardLogger
@@ -10,6 +11,8 @@ from agent.dqn import DQN
 from agent.option_critic import OptionCritic
 from agent.actor_critic import ActorCritic
 from agent.ppo import PPO
+
+from experiments import fourrooms_transfer_experiment
 
 import hydra
 from hydra.utils import instantiate
@@ -36,44 +39,16 @@ envs = {
     "sapientino": LTLSapientino
 }
 
-def fourrooms_transfer_experiment(env, agent, logger, cfg, run_name):
-    # Train
-    print("First Stage")
-    env.spec.end_state = 1
-    agent.run(env, logger)
-    agent.save(cfg, run_name+"_FirstStage")
-
-    print("Second Stage")
-    # Update Goal
-    env.spec.end_state = 2
-    # Clear Buffer
-    agent.buffer.clear()
-    # Set New Number of Max Episodes
-    agent.max_episodes = cfg.agent.max_episodes*2
-    # Run
-    agent.run(env, logger)
-    agent.save(cfg, run_name+"_SecondStage")
-
-    print("Third Stage")
-    env.spec.end_state = 3
-    # Clear Buffer
-    agent.buffer.clear()
-    # Set New Number of Max Episodes
-    agent.max_episodes = cfg.agent.max_episodes*3
-    # Run
-    agent.run(env, logger)
-    agent.save(cfg, run_name+"_ThirdStage")
-
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(cfg : DictConfig) -> None: 
          
     # Load env   
     ##########
-    if not cfg.env.name in envs:
-        raise("Please declare an environment: fourrooms - breakout - sapientino")
+    if cfg.env.name in envs:
+        env = envs[cfg.env.name](**cfg.env)
+    else:
+        env = gym.make(cfg.env.name)
 
-    print(envs[cfg.env.name])
-    env = envs[cfg.env.name](**cfg.env)
         
     # Load Agent
     ############

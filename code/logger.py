@@ -73,7 +73,7 @@ class Logger():
         if self.enable_log_terminal:
             time = str(datetime.now()-self.start_time)
             logging.info(
-                f"Episode: {episode:5d} | Steps: {steps:7d} | Reward={reward:5d} "\
+                f"Episode: {episode:5d} | Steps: {steps:7d} | Reward={reward:.1f} "\
                 f"| Episode Steps={ep_steps:5d} "\
                 f"| Time={time:6s} | Epsilon={epsilon:.3f}")
             

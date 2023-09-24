@@ -20,11 +20,11 @@ model:
   path: models
   load_model: null
 
-# env:
-#   name: CartPole-v1
+env:
+  name: CartPole-v1
 
 defaults:
-  - env: breakout
+  # - env: breakout
   - agent: oc
   - override hydra/launcher: joblib
   - _self_

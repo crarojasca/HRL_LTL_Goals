@@ -9,7 +9,7 @@ experiment: 1
 note: null
 replicate_experiment: null
 logger:
-  type: base  # base - tensorboard - wandb
+  type: wandb  # base - tensorboard - wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False
@@ -21,7 +21,7 @@ model:
   load_model: null
 
 env:
-  name: CartPole-v1
+  name: LTLcartpole
 
 defaults:
   # - env: breakout

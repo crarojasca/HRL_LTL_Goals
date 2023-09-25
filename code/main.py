@@ -5,6 +5,7 @@ from logger import Logger, WanDBLogger, TensorboardLogger
 from env.fourrooms import Fourrooms, LTLFourrooms
 from env.breakout import Breakout, LTLBreakout, BreakoutNRA
 from env.sapientino import Sapientino, LTLSapientino
+from env.cartpole import LTLCartPole
 
 from agent.sarsa import Sarsa
 from agent.dqn import DQN
@@ -36,7 +37,8 @@ envs = {
     "fourrooms": LTLFourrooms,
     "breakout": LTLBreakout,
     "breakoutNRA": BreakoutNRA,
-    "sapientino": LTLSapientino
+    "sapientino": LTLSapientino,
+    "LTLcartpole": LTLCartPole,
 }
 
 @hydra.main(version_base=None, config_path="config", config_name="config")

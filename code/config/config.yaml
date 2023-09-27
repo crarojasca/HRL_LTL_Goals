@@ -1,6 +1,6 @@
 hydra:
   launcher:
-    n_jobs: 3
+    n_jobs: 5
   sweeper:
     params:
       experiment: range(1, 11)
@@ -20,11 +20,8 @@ model:
   path: models
   load_model: null
 
-env:
-  name: LTLcartpole
-
 defaults:
-  # - env: breakout
+  - env: cartpole
   - agent: ppo
   - override hydra/launcher: joblib
   - _self_

@@ -219,7 +219,7 @@ class PPO:
             print("WARNING : Calling PPO::decay_action_std() on discrete action space policy")
         print("--------------------------------------------------------------------------------------------")
 
-    def select_action(self, state):
+    def get_action(self, state):
 
         if self.has_continuous_action_space:
             with torch.no_grad():
@@ -329,9 +329,8 @@ class PPO:
             while not done and ep_steps < self.max_steps_ep:
 
                 # select action with policy
-                action = self.select_action(state)
+                action = self.get_action(state)
                 state, reward, done, _ = env.step(action)
-
 
                 # saving reward and is_terminals
                 self.buffer.rewards.append(reward)

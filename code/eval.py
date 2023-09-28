@@ -84,6 +84,8 @@ agent.policy.load_state_dict(model['model_params'])
 
 obs = env.reset()
 
+print(cfg.env.formula)
+
 state = obs
 
 # state = agent.option_critic.get_state(obs)
@@ -119,8 +121,9 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
     next_obs, reward, done, _ = env.step(action)
     state = next_obs
 
-    if reward:
-        print(ep_steps, reward, env.spec.state, state[2])
+    # if reward:
+    print("Ep stesps: ", ep_steps, " reward: ", reward, 
+            " State: ", env.spec.state, " Angle: ", state[2])
 
     # img = env.env.render()
     # print(img)

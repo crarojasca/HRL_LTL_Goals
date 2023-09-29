@@ -3,15 +3,21 @@ import numpy as np
 
 class Specification:
 
-    def __init__(self, formula, reward=1):
+    def __init__(self, formula=None, hoa=None, reward=1):
 
         # Spot Formula
         self.reward = reward
-        self.formula = spot.from_ltlf(formula)
 
-        # Translate Automaton
-        self.automaton = self.formula.translate('small', 'buchi', 'sbacc')
-        self.automaton = spot.to_finite(self.automaton)
+        if formula:
+            self.formula = spot.from_ltlf(formula)
+            # Translate Automaton
+            self.automaton = self.formula.translate('small', 'buchi', 'sbacc')
+            self.automaton = spot.to_finite(self.automaton)     
+        elif hoa:
+            for a in spot.automata(hoa):
+                self.automaton = a
+        else:
+            raise("Required LTL formula or HOA.")
 
         # Building automaton
         self.init = self.automaton.get_init_state_number()
@@ -77,12 +83,8 @@ class Specification:
         return cond
 
     def get_variables(self):
-        def get_variable(f, variables):
-            if f._is(spot.op_ap):
-                variables.append(str(f))
-
-        variables = []
-        self.formula.traverse(get_variable, variables)
+        variables = [str(a) for a in self.automaton.ap()]
+        variables += ["alive"]
         return set(variables)
 
     def step(self, *arglist, **keywords):

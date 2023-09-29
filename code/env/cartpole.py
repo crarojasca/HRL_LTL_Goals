@@ -10,7 +10,7 @@ from specs import Specification
 
 class LTLCartPole:
 
-    def __init__(self, name, render, formula) -> None:
+    def __init__(self, name, render, spec) -> None:
         
         self.name = name
         if render:
@@ -18,8 +18,7 @@ class LTLCartPole:
         else:
             self.env = gym.make('CartPole-v1')
 
-        self.spec = Specification(
-            formula=formula)
+        self.spec = Specification(**spec)
         self.observation_space = spaces.Box(
             low=0., high=1., shape=(self.env.observation_space.shape[0]+len(self.spec),))
         self.action_space = self.env.action_space

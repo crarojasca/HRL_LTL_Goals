@@ -1,3 +1,5 @@
 name: LTLcartpole
 render: False
-formula: "!G(a & Xa & XX(0)) & !G(b & Xb & XX(0)) & G!(a & b) & G((!a&!b) -> F(a|b))"
+spec:
+  formula: null
+  hoa: "automata/cartpole_oscilation.aut"

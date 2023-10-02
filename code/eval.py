@@ -14,6 +14,7 @@ from omegaconf import OmegaConf
 
 import matplotlib
 import matplotlib as mpl
+from matplotlib import animation
 import matplotlib.pyplot as plt
 from matplotlib import patches
 
@@ -28,6 +29,20 @@ from agent.dqn import DQN
 from agent.option_critic import OptionCritic
 from agent.actor_critic import ActorCritic
 from agent.ppo import PPO
+
+def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
+
+    #Mess with this to change frame size
+    plt.figure(figsize=(frames[0].shape[1] / 72.0, frames[0].shape[0] / 72.0), dpi=72)
+
+    patch = plt.imshow(frames[0])
+    plt.axis('off')
+
+    def animate(i):
+        patch.set_data(frames[i])
+
+    anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=50)
+    anim.save(path + filename, writer='imagemagick', fps=60)
 
 
 agents = {
@@ -61,16 +76,10 @@ cfg = OmegaConf.create(model["hyperparameters"])
 if cfg.env.name in envs:
     env = envs[cfg.env.name](**cfg.env)
 else:
-    env = gym.make(cfg.env.name, render_mode="human")
+    env = gym.make(cfg.env.name, render_mode="rgb_array")
 
-env.env = gym.make('CartPole-v1', render_mode="human")
+env.env = gym.make('CartPole-v1', render_mode="rgb_array")
 
-# agent = OptionCritic(
-#         observation_space=env.observation_space, 
-#         action_space=env.action_space.n,
-#         args=cfg.agent
-# )
-# agent.option_critic.load_state_dict(model['model_params'])
 
 # Load Agent
 ############
@@ -83,8 +92,6 @@ agent.policy_old.load_state_dict(model['model_params'])
 agent.policy.load_state_dict(model['model_params'])
 
 obs = env.reset()
-
-print(cfg.env.formula)
 
 state = obs
 
@@ -103,8 +110,7 @@ truncated = False
 
 option_trace = []
 spec_trace = []    
-
-# env.env.render("human")
+frames = []
 
 
 while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
@@ -120,7 +126,7 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
     # STEP
     next_obs, reward, done, _ = env.step(action)
     state = next_obs
-
+    frames.append(env.env.render())
     # if reward:
     print("Ep stesps: ", ep_steps, " reward: ", reward, 
             " State: ", env.spec.state, " Angle: ", state[2])
@@ -144,3 +150,5 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
     # spec_trace.append(env.spec.state)
 
 print(ep_reward)
+env.env.close()
+save_frames_as_gif(frames)

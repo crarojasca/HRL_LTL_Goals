@@ -1,0 +1,6 @@
+name: LTLtaxi
+render: False
+spec:
+  formula: F((p& !failure) & F(d & !failure))
+  hoa: null
+  reward: 21

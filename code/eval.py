@@ -23,6 +23,8 @@ from env.fourrooms import Fourrooms, LTLFourrooms
 from env.breakout import Breakout, LTLBreakout, BreakoutNRA
 from env.sapientino import Sapientino, LTLSapientino
 from env.cartpole import LTLCartPole
+from env.acrobot import LTLAcrobot
+from env.taxi import LTLTaxi
 
 from agent.sarsa import Sarsa
 from agent.dqn import DQN
@@ -59,12 +61,14 @@ envs = {
     "breakoutNRA": BreakoutNRA,
     "sapientino": LTLSapientino,
     "LTLcartpole": LTLCartPole,
+    "LTLacrobot": LTLAcrobot,
+    "LTLtaxi": LTLTaxi
 }
 
-name = "PPO_LTLcartpole_1"
+name = "PPO_LTLtaxi_1"
 model = torch.load(f"models/{name}")
 cfg = OmegaConf.create(model["hyperparameters"])
-# cfg.env.render = True
+cfg.env.render = True
 
 # print(cfg.env.render)
 # env = LTLCartPole(**cfg.env)
@@ -75,10 +79,11 @@ cfg = OmegaConf.create(model["hyperparameters"])
 ##########
 if cfg.env.name in envs:
     env = envs[cfg.env.name](**cfg.env)
+    env.env = gym.make("Taxi-v3", render_mode="human")
 else:
-    env = gym.make(cfg.env.name, render_mode="rgb_array")
+    env = gym.make(cfg.env.name, render_mode="human")
 
-env.env = gym.make('CartPole-v1', render_mode="rgb_array")
+# env.env = gym.make('CartPole-v1', render_mode="rgb_array")
 
 
 # Load Agent
@@ -91,7 +96,7 @@ agent = agents[cfg.agent.name](
 agent.policy_old.load_state_dict(model['model_params'])
 agent.policy.load_state_dict(model['model_params'])
 
-obs = env.reset()
+obs, _ = env.reset()
 
 state = obs
 
@@ -121,21 +126,24 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
     # ACTION
     # action, logp, entropy, probs = agent.option_critic.get_action(state, current_option)
 
+
     action = agent.get_action(state)
 
     # STEP
-    next_obs, reward, done, _ = env.step(action)
+    next_obs, reward, done, _, _ = env.step(action)
+
     state = next_obs
-    frames.append(env.env.render())
+    frames.append(env.render())
     # if reward:
-    print("Ep stesps: ", ep_steps, " reward: ", reward, 
-            " State: ", env.spec.state, " Angle: ", state[2])
+    # print("Ep stesps: ", ep_steps, " reward: ", reward, 
+    #         " State: ", env.spec.state, " Angle: ", state[2])
 
     # img = env.env.render()
     # print(img)
 
     ep_reward += reward 
 
+    print(cfg.agent.max_steps_ep, ep_steps, reward, ep_reward)
     # NEXT STATE
     # state = agent.option_critic.get_state(next_obs)
 
@@ -151,4 +159,4 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
 
 print(ep_reward)
 env.env.close()
-save_frames_as_gif(frames)
+save_frames_as_gif(frames, filename="images/{}.gif".format(cfg.env.name))

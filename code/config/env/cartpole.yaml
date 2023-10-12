@@ -3,3 +3,4 @@ render: False
 spec:
   formula: null
   hoa: "automata/cartpole_oscilation.aut"
+  reward: 1

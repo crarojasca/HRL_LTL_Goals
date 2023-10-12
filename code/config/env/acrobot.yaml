@@ -1,0 +1,6 @@
+name: LTLacrobot
+render: False
+spec:
+  formula: G((!a|!b) -> F(a & (F ((b -> X[!]!b) & (!b -> X[!]b)))))
+  hoa: null
+  reward: 1

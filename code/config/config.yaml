@@ -1,6 +1,6 @@
 hydra:
   launcher:
-    n_jobs: 5
+    n_jobs: 2
   sweeper:
     params:
       experiment: range(1, 11)
@@ -9,7 +9,7 @@ experiment: 1
 note: null
 replicate_experiment: null
 logger:
-  type: wandb  # base - tensorboard - wandb
+  type: base  # base - tensorboard - wandb
   folder_path: logs
   wandb_project: HRL
   log_step: False
@@ -20,8 +20,11 @@ model:
   path: models
   load_model: null
 
+# env:
+#   name: Taxi-v3
+
 defaults:
-  - env: cartpole
+  - env: taxi
   - agent: ppo
   - override hydra/launcher: joblib
   - _self_

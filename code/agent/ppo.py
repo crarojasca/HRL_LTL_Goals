@@ -324,13 +324,13 @@ class PPO:
 
             ep_reward = 0; done = False ; ep_steps = 0; loss=None
 
-            state = env.reset()
+            state, info = env.reset()
    
             while not done and ep_steps < self.max_steps_ep:
 
                 # select action with policy
                 action = self.get_action(state)
-                state, reward, done, _ = env.step(action)
+                state, reward, done, _, _ = env.step(action)
 
                 # saving reward and is_terminals
                 self.buffer.rewards.append(reward)

@@ -6,6 +6,8 @@ from env.fourrooms import Fourrooms, LTLFourrooms
 from env.breakout import Breakout, LTLBreakout, BreakoutNRA
 from env.sapientino import Sapientino, LTLSapientino
 from env.cartpole import LTLCartPole
+from env.acrobot import LTLAcrobot
+from env.taxi import LTLTaxi
 
 from agent.sarsa import Sarsa
 from agent.dqn import DQN
@@ -30,7 +32,7 @@ agents = {
     "OC": OptionCritic,
     "Sarsa": Sarsa,
     "A2C": ActorCritic,
-    "PPO": PPO
+    "PPO": PPO,
 }
 
 envs = {
@@ -39,6 +41,8 @@ envs = {
     "breakoutNRA": BreakoutNRA,
     "sapientino": LTLSapientino,
     "LTLcartpole": LTLCartPole,
+    "LTLacrobot": LTLAcrobot,
+    "LTLtaxi": LTLTaxi
 }
 
 @hydra.main(version_base=None, config_path="config", config_name="config")

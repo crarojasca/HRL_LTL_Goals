@@ -24,8 +24,8 @@ model:
 #   name: Taxi-v3
 
 defaults:
-  - env: taxi
-  - agent: ppo
+  - env: cartpole
+  - agent: oc
   - override hydra/launcher: joblib
   - _self_
 

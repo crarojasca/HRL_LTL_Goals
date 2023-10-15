@@ -80,7 +80,7 @@ name: OC
 seed: null
 temp: 1
 gamma: 0.99
-num_options: 8
+num_options: 4
 learning_rate: 1e-4
 entropy_reg: 0.001 
 termination_reg: 0.01 

@@ -15,9 +15,9 @@ class LTLAcrobot:
         
         self.name = name
         if render:
-            self.env = gym.make('Taxi-v3', render_mode="rgb_array")
+            self.env = gym.make('Acrobot-v1', render_mode="rgb_array")
         else:
-            self.env = gym.make('Taxi-v3')
+            self.env = gym.make('Acrobot-v1')
 
         self.spec = Specification(**spec)
         self.observation_space = spaces.Box(

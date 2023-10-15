@@ -87,9 +87,9 @@ class LTLTaxi:
 
         # print(next_prod_state, variables, reward)
 
-        done = spec_done or env_done
+        # done = spec_done or env_done
 
-        return next_prod_state, reward, done, False, None
+        return next_prod_state, reward, spec_done, False, None
     
     def render(self):
 

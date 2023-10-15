@@ -79,7 +79,7 @@ cfg.env.render = True
 ##########
 if cfg.env.name in envs:
     env = envs[cfg.env.name](**cfg.env)
-    env.env = gym.make("Taxi-v3", render_mode="human")
+    # env.env = gym.make("Taxi-v3", render_mode="human")
 else:
     env = gym.make(cfg.env.name, render_mode="human")
 
@@ -143,7 +143,7 @@ while not(done or truncated or ep_steps>cfg.agent.max_steps_ep):
 
     ep_reward += reward 
 
-    print(cfg.agent.max_steps_ep, ep_steps, reward, ep_reward)
+    print(cfg.agent.max_steps_ep, ep_steps, reward, ep_reward, done, env.spec.state)
     # NEXT STATE
     # state = agent.option_critic.get_state(next_obs)
 

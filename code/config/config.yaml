@@ -24,7 +24,7 @@ model:
 #   name: Taxi-v3
 
 defaults:
-  - env: cartpole
+  - env: sapientino
   - agent: oc
   - override hydra/launcher: joblib
   - _self_

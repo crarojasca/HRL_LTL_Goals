@@ -65,7 +65,7 @@ envs = {
     "LTLtaxi": LTLTaxi
 }
 
-name = "PPO_LTLtaxi_1"
+name = "OC_LTLcartpole_1_8opt"
 model = torch.load(f"models/{name}")
 cfg = OmegaConf.create(model["hyperparameters"])
 cfg.env.render = True
